@@ -77,7 +77,10 @@ def fetch_modelsdev():
         return [], f"models.dev: {e}"
     models = []
     for pid, prov in providers.items():
-        plan = bool(_PLAN_PROVIDER_RE.search(pid))
+        # subscription-plan providers ("$0 within your plan") are NOT truly
+        # free APIs — excluded entirely per strict price==0 policy
+        if _PLAN_PROVIDER_RE.search(pid):
+            continue
         for mid, m in (prov.get("models") or {}).items():
             cost = m.get("cost") or {}
             if not is_zero_price({"prompt": cost.get("input"), "completion": cost.get("output")}):
@@ -87,7 +90,7 @@ def fetch_modelsdev():
                 ",".join(m.get("modalities") or ["text"]) if m.get("modalities") else "text",
                 bool((m.get("capabilities") or {}).get("tool_call")),
                 source="models.dev",
-                free_basis="plan" if plan else "price-0"))
+                free_basis="price-0"))
     return models, ""
 
 

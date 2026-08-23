@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime, timezone
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 MODELS_FILE = os.path.join(DATA_DIR, "models.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 

@@ -15,6 +15,17 @@ import re
 #   "free_basis": str,      # "price-0" | "zen-free"
 # }
 
+# IDs that are routers/aggregators/UI helpers or otherwise not real callable
+# free models — excluded from the roster.
+_JUNK_ID_RE = re.compile(
+    r"^(openrouter/(auto|free|bodybuilder|pareto-code)|orcarouter/auto|auto|auto-model|custom|zdev|lynkr-auto|kilo-auto/free)$"
+    r"|^(duo-chat-)", re.I)
+
+
+def _junk(m):
+    return bool(_JUNK_ID_RE.match(m["id"]))
+
+
 _SUFFIX_RE = re.compile(r"(:free|-free)$")
 
 
@@ -22,6 +33,10 @@ def normalize_id(raw_id: str) -> str:
     """Lowercase and strip :free / -free suffixes so the same model from
     different providers merges into one row."""
     return _SUFFIX_RE.sub("", raw_id.strip().lower())
+
+
+def is_junk(m):
+    return bool(_JUNK_ID_RE.match(m["id"]))
 
 
 def make_model(raw_id, name="", description="", context_length=None,

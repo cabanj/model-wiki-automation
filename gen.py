@@ -33,11 +33,12 @@ def assign_role(m):
 
 
 def sort_models(models):
-    """Best free first: price-0 verified > zen-free > in-plan; then by context desc."""
-    basis_rank = {"price-0": 0, "zen-free": 1, "plan": 2}
-    return sorted(models, key=lambda m: (
-        basis_rank.get(m.get("free_basis"), 3),
-        -(m.get("context_length") or 0)))
+    """Group by primary provider (source), then by model name."""
+    def primary_source(m):
+        order = {"nous": 0, "opencode-zen": 1, "openrouter": 2}
+        return min(order.get(s, 9) for s in m["sources"])
+    return sorted(models, key=lambda m: (primary_source(m),
+                                         (m.get("name") or m["id"]).lower()))
 
 
 def render_ranking(models, generated_at):

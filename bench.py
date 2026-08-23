@@ -66,27 +66,64 @@ def load_cached():
     return []
 
 
+# Explicit alias map: normalized roster id -> exact AA model name.
+# Used when fuzzy matching would pick the wrong AA entry (verified manually
+# against live AA names). Anything not listed falls back to fuzzy matching.
+AA_ALIASES = {
+    "z-ai/glm-5.2": "GLM-5.2 (max)",
+    "meituan/longcat-2.0": "LongCat 2.0",
+    "upstage/solar-pro4": "Solar Pro 4",
+    "mimo-v2.5": "MiMo-V2.5",
+    "liquid/lfm-2.5-2.6b": "LFM2 2.6B",
+    "cohere/north-mini-code": "North Mini Code",
+    "google/gemma-4-26b-a4b-it": "Gemma 4 26B A4B (Reasoning)",
+    "google/gemma-4-31b-it": "Gemma 4 31B (Non-reasoning)",
+    "nvidia/nemotron-3-nano-30b-a3b": "NVIDIA Nemotron 3 Nano 30B A3B (Reasoning)",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning": "Nemotron 3 Nano Omni 30B A3B Reasoning",
+    "nvidia/nemotron-3-super-120b-a12b": "Nemotron 3 Super 120B A12B (Reasoning)",
+    "nvidia/nemotron-3-ultra-550b-a55b": "Nemotron 3 Ultra 550B A55B (Reasoning)",
+    "nemotron-3-ultra": "Nemotron 3 Ultra 550B A55B (Reasoning)",
+    "nemotron-3.5-lightning": "Nemotron 3.5 Lightning",
+    "nvidia/nemotron-3.5-lightning": "Nemotron 3.5 Lightning",
+    "nvidia/nemotron-nano-12b-v2-vl": "NVIDIA Nemotron Nano 12B v2 VL (Reasoning)",
+    "nvidia/nemotron-nano-9b-v2": "NVIDIA Nemotron Nano 9B V2 (Non-reasoning)",
+    "stepfun/step-3.7-flash": "Step 3.7 Flash",
+    "thinkingmachines/inkling": "Inkling (xhigh)",
+    "thinkingmachines/inkling-small": "Inkling Small",
+    "muse-spark-1.2-contributor": "Muse Spark 1.2 (xhigh)",
+}
+
+
 def match_free(free_models, aa_models):
     """Map normalized free-model ids to AA entries.
-    Strategy: token overlap on the model's base name, plus targeted alias
-    handling for known naming mismatches (e.g. 'nemotron-3.5-lightning' vs
-    'Nemotron 3.5 Lightning', 'tencent/hy3:free' vs 'Hy3')."""
-    def aa_tokens(name):
-        return set(_split(name.lower()))
+    Matching uses only 'significant' tokens: >=3 chars and not pure numbers.
+    This prevents false positives like laguna-s-2.1 ~ Muse Spark 1.2 (shared
+    tokens '2','1'). A match requires >=1 significant shared token; ties broken
+    by higher token overlap. Verified-free models not present in AA stay
+    unmatched (no score shown — never guessed)."""
+    def sig_tokens(s):
+        return {t for t in _split(s.lower())
+                if len(t) >= 3 and not t.replace(".", "").isdigit()}
 
-    # pre-index AA entries by their significant tokens (drop effort variants)
     aa_entries = []
     for a in aa_models:
         n = a.get("name") or ""
-        toks = {t for t in _split(n.lower()) if t not in
-                ("low", "high", "medium", "max", "xhigh", "non-reasoning", "reasoning")}
+        toks = {t for t in sig_tokens(n)}
         aa_entries.append((toks, n, a))
 
     matched = {}
+    by_name = {a.get("name", ""): a for _, n, a in aa_entries}
     for m in free_models:
         mid = m["id"]
+        # 1) explicit alias wins
+        if mid in AA_ALIASES and AA_ALIASES[mid] in by_name:
+            matched[mid] = by_name[AA_ALIASES[mid]]
+            continue
+        # 2) fuzzy fallback (only for models NOT explicitly aliased — and only
+        #    when the match is unambiguous, i.e. >=2 significant shared tokens)
         base = mid.split("/")[-1]
-        mtoks = set(_split(base))
+        mtoks = {t for t in sig_tokens(base)
+                 if t not in ("preview", "free", "stealth", "contributor", "reasoning")}
         best, best_score = None, 0
         for toks, n, a in aa_entries:
             score = len(mtoks & toks)
@@ -162,6 +199,35 @@ def render(models, generated_at):
         "<h2>🖼️ Multimodal (vision)</h2><p class='src-note'>Free roster models accepting image input, "
         "ranked by AA Intelligence Index as proxy (no dedicated MMMU field in the free API).</p>"
         + table(["Model", "Score"], mm_rows))
+
+    # Summary: best free model per use-case, computed from the matched AA data only.
+    def best_free(field):
+        scored = [(matched[m["id"]].get(field), m) for m in models
+                  if m["id"] in matched]
+        scored = [(v, m) for v, m in scored if v is not None]
+        scored.sort(key=lambda x: -x[0])
+        return scored[0] if scored else (None, None)
+
+    summary_specs = [
+        ("Everyday model", "artificial_analysis_intelligence_index",
+         "best general intelligence — good balance of quality, speed and context"),
+        ("Research", "gpqa",
+         "GPQA — scientific reasoning benchmark, proxy for research-grade work"),
+        ("Coding", "artificial_analysis_coding_index",
+         "AA Coding Index — code generation and review"),
+    ]
+    sum_rows = []
+    for label, field, desc in summary_specs:
+        v, m = best_free(field)
+        if m:
+            sum_rows.append([f"<strong>{label}</strong>",
+                             f'<code>{esc(m["display_id"])}</code>',
+                             esc(desc), str(v)])
+    sections.append(
+        "<h2>📌 Summary — best free model per use case</h2>"
+        "<p class='src-note'>Derived strictly from the Artificial Analysis data above; "
+        "'everyday model' weighs overall intelligence, latency and context.</p>"
+        + table(["Use case", "Model", "Why", "Score"], sum_rows))
 
     src_note = "Live from Artificial Analysis API"
     if err and from_cache:

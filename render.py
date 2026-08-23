@@ -99,12 +99,12 @@ document.addEventListener('DOMContentLoaded',function(){{
 def table(headers, rows, cls=""):
     th = "".join(f"<th>{h}</th>" for h in headers)
     trs = "".join(f"<tr>{''.join(f'<td>{c}</td>' for c in r)}</tr>" for r in rows)
-    # fixed score column: consistent width across all tables (last column)
+    # fixed score column: identical width in ALL tables for visual alignment
     if len(headers) == 2:
         colgroup = '<col style="width:auto"><col style="width:22ch">'
     elif len(headers) == 4:  # summary table: Use case | Model | Why | Score
-        colgroup = ('<col style="width:16ch"><col style="width:auto">'
-                    '<col style="width:auto"><col style="width:12ch">')
+        colgroup = ('<col style="width:auto"><col style="width:auto">'
+                    '<col style="width:auto"><col style="width:22ch">')
     else:
         colgroup = ""
     return (f'<div class="table-wrap {cls}"><table>{colgroup}<thead><tr>{th}</tr></thead>'

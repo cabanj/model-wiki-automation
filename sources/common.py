@@ -19,7 +19,9 @@ import re
 # free models — excluded from the roster.
 _JUNK_ID_RE = re.compile(
     r"^(openrouter/(auto|free|bodybuilder|pareto-code)|orcarouter/auto|auto|auto-model|custom|zdev|lynkr-auto|kilo-auto/free)$"
-    r"|^(duo-chat-)", re.I)
+    r"|^(duo-chat-)"
+    # non-chat models: music generation, safety classifiers, embedders
+    r"|^(google/lyria-|nvidia/nemotron-3\.5-content-safety|.*embed|baai/)", re.I)
 
 
 def _junk(m):

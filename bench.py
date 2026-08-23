@@ -26,9 +26,17 @@ CATEGORIES = [
      "AA Intelligence Index — agents, coding, scientific reasoning, general knowledge."),
     ("💻 Coding", "artificial_analysis_coding_index",
      "AA Coding Index — code generation, completion, review."),
-    ("⚙️ Agentic / terminal", "agentic_index",
-     "AA Agentic Index — terminal usage, tool use, multi-step workflows."),
+    ("🤖 Agentic coding / terminal", "terminalbench_hard",
+     "Terminal-Bench Hard — agentic terminal usage, tool use, multi-step workflows (0-1 scale)."),
 ]
+
+# Multimodal: separate section — roster models that accept image input,
+# ranked by AA Intelligence Index (no dedicated MMMU field in the free API).
+MULTIMODAL_FIELD = "artificial_analysis_intelligence_index"
+
+
+def is_multimodal(m):
+    return "image" in (m.get("modalities") or "")
 
 
 def fetch_aa():
@@ -102,8 +110,17 @@ def render(models, generated_at):
         aa_data = load_cached()
         from_cache = bool(aa_data)
 
-    free_ids = {m["id"] for m in models}
     matched = match_free(models, aa_data)
+
+    # paid frontier: top 3 paid AA models per category (by that category's score)
+    def top_paid(field, n=3):
+        scored = [(a.get(field), a) for a in aa_data
+                  if a.get(field) is not None
+                  and float((a.get("pricing") or {}).get("price_1m_blended_3_to_1", 0) or 0) > 0]
+        scored.sort(key=lambda x: -x[0])
+        return scored[:n]
+
+    TOP_N_FREE = 3
 
     sections = []
     for title, field, desc in CATEGORIES:
@@ -115,33 +132,44 @@ def render(models, generated_at):
                 scored.append((v, m))
         scored.sort(key=lambda x: -x[0])
         rows = []
-        for v, m in scored[:10]:
-            star = " ⭐" if m["free_basis"] == "price-0" and v == scored[0][0] else ""
-            rows.append([f'<code>{esc(m["display_id"])}</code>', f"{v}{star}"])
-        if REFERENCE.get(field.replace("artificial_analysis_", "").replace("_index", "")) is None:
-            ref_val = REFERENCE.get({"artificial_analysis_intelligence_index": "intelligence",
-                                     "artificial_analysis_coding_index": "coding",
-                                     "agentic_index": "agentic"}.get(field), "")
-        else:
-            ref_val = REFERENCE.get(field.replace("artificial_analysis_", "").replace("_index", ""))
-        if ref_val:
-            rows.append([f"<em>{esc(REFERENCE['name'])} *</em>", str(ref_val)])
-        # roster members without AA data
-        no_data = [m for m in models if m["id"] not in matched]
-        for m in no_data[:6]:
-            rows.append([f'<code>{esc(m["display_id"])}</code>', "—"])
-        note = f" <span class='src-note'>({len(no_data)} roster models without AA data shown as —)</span>" if no_data else ""
+        for i, (v, m) in enumerate(scored[:TOP_N_FREE]):
+            star = " ⭐" if i == 0 else ""
+            rows.append([f'<code>{esc(m["display_id"])}</code>',
+                         f'<span class="badge badge-free">free</span> {v}{star}'])
+        for v, a in top_paid(field):
+            name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
+            rows.append([f"<em>{esc(name)} *</em>",
+                         f'<span class="badge badge-plan">paid</span> {v}'])
+        no_data_count = sum(1 for m in models if m["id"] not in matched)
+        note = (f" <span class='src-note'>({no_data_count} roster models without AA data omitted)</span>"
+                if no_data_count else "")
         sections.append(f"<h2>{title}</h2><p class='src-note'>{desc}{note}</p>"
                         + table(["Model", "Score"], rows))
+
+    # multimodal section: free roster models with image input, ranked by intel index
+    mm = [(matched[m["id"]].get(MULTIMODAL_FIELD), m) for m in models
+          if is_multimodal(m) and m["id"] in matched]
+    mm = [(v, m) for v, m in mm if v is not None]
+    mm.sort(key=lambda x: -x[0])
+    mm_rows = [[f'<code>{esc(m["display_id"])}</code>',
+                f'<span class="badge badge-free">free</span> {v}{" ⭐" if i == 0 else ""}']
+               for i, (v, m) in enumerate(mm[:TOP_N_FREE])]
+    for v, a in top_paid(MULTIMODAL_FIELD):
+        name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
+        mm_rows.append([f"<em>{esc(name)} *</em>",
+                        f'<span class="badge badge-plan">paid</span> {v}'])
+    sections.append(
+        "<h2>🖼️ Multimodal (vision)</h2><p class='src-note'>Free roster models accepting image input, "
+        "ranked by AA Intelligence Index as proxy (no dedicated MMMU field in the free API).</p>"
+        + table(["Model", "Score"], mm_rows))
 
     src_note = "Live from Artificial Analysis API"
     if err and from_cache:
         src_note = f"⚠ AA live fetch failed ({esc(err)[:80]}) — showing cached data"
     body = f"""
 <section class="page-head"><h1>Benchmarks — Free Roster vs Paid Frontier</h1>
-<p class="lead">How the current <strong>strictly-$0 roster</strong> scores on public benchmarks,
-with the best commercial model in each category as reference (*).
-Best verified-free model per category marked ⭐.</p></section>
+<p class="lead">Top {TOP_N_FREE} <strong>$0 roster models</strong> vs top-3 paid alternatives per category,
+from public Artificial Analysis benchmarks. Best free model marked ⭐.</p></section>
 <p class="src-note">Source: {src_note}</p>
 {''.join(sections)}"""
     return page("Benchmarks — Free Roster vs Paid Frontier",

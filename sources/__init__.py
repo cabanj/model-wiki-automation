@@ -123,7 +123,6 @@ def fetch_opencode_zen():
 ALL_SOURCES = [
     ("openrouter", fetch_openrouter),
     ("nous", fetch_nous_portal),
-    ("models.dev", fetch_modelsdev),
     ("opencode-zen", fetch_opencode_zen),
 ]
 

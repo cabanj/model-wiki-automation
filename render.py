@@ -100,7 +100,7 @@ def table(headers, rows, cls=""):
     th = "".join(f"<th>{h}</th>" for h in headers)
     trs = "".join(f"<tr>{''.join(f'<td>{c}</td>' for c in r)}</tr>" for r in rows)
     # fixed score column: consistent width across all tables
-    colgroup = '<col style="width:auto"><col style="width:16ch">' if len(headers) == 2 else ""
+    colgroup = '<col style="width:auto"><col style="width:22ch">' if len(headers) == 2 else ""
     return (f'<div class="table-wrap {cls}"><table>{colgroup}<thead><tr>{th}</tr></thead>'
             f'<tbody>{trs}</tbody></table></div>')
 

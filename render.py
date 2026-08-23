@@ -99,7 +99,9 @@ document.addEventListener('DOMContentLoaded',function(){{
 def table(headers, rows, cls=""):
     th = "".join(f"<th>{h}</th>" for h in headers)
     trs = "".join(f"<tr>{''.join(f'<td>{c}</td>' for c in r)}</tr>" for r in rows)
-    return (f'<div class="table-wrap {cls}"><table><thead><tr>{th}</tr></thead>'
+    # fixed score column: consistent width across all tables
+    colgroup = '<col style="width:auto"><col style="width:16ch">' if len(headers) == 2 else ""
+    return (f'<div class="table-wrap {cls}"><table>{colgroup}<thead><tr>{th}</tr></thead>'
             f'<tbody>{trs}</tbody></table></div>')
 
 
@@ -123,8 +125,6 @@ def model_rows(models, show_desc=True):
         ]
         if show_desc:
             desc = m.get("description") or "—"
-            if len(desc) > 220:
-                desc = desc[:217] + "…"
-            cells.append(esc(desc))
+            cells.append(f'<span class="desc">{esc(desc)}</span>')
         rows.append(cells)
     return rows

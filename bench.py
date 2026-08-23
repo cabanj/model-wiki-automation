@@ -159,6 +159,12 @@ def render(models, generated_at):
 
     TOP_N_FREE = 3
 
+    def fmt_score(v):
+        """2 decimal places max, no trailing-zero noise."""
+        if isinstance(v, float) and 0 <= v <= 1:
+            return f"{v:.2f}"
+        return f"{float(v):.2f}"
+
     sections = []
     for title, field, desc in CATEGORIES:
         scored = []
@@ -172,11 +178,11 @@ def render(models, generated_at):
         for i, (v, m) in enumerate(scored[:TOP_N_FREE]):
             star = " ⭐" if i == 0 else ""
             rows.append([f'<code>{esc(m["display_id"])}</code>',
-                         f'<span class="badge badge-free">free</span> {v}{star}'])
+                         f'<span class="badge badge-free">free</span> {fmt_score(v)}{star}'])
         for v, a in top_paid(field):
             name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
             rows.append([f"<em>{esc(name)} *</em>",
-                         f'<span class="badge badge-plan">paid</span> {v}'])
+                         f'<span class="badge badge-plan">paid</span> {fmt_score(v)}'])
         no_data_count = sum(1 for m in models if m["id"] not in matched)
         note = (f" <span class='src-note'>({no_data_count} roster models without AA data omitted)</span>"
                 if no_data_count else "")
@@ -189,12 +195,12 @@ def render(models, generated_at):
     mm = [(v, m) for v, m in mm if v is not None]
     mm.sort(key=lambda x: -x[0])
     mm_rows = [[f'<code>{esc(m["display_id"])}</code>',
-                f'<span class="badge badge-free">free</span> {v}{" ⭐" if i == 0 else ""}']
+                f'<span class="badge badge-free">free</span> {fmt_score(v)}{" ⭐" if i == 0 else ""}']
                for i, (v, m) in enumerate(mm[:TOP_N_FREE])]
     for v, a in top_paid(MULTIMODAL_FIELD):
         name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
         mm_rows.append([f"<em>{esc(name)} *</em>",
-                        f'<span class="badge badge-plan">paid</span> {v}'])
+                        f'<span class="badge badge-plan">paid</span> {fmt_score(v)}'])
     sections.append(
         "<h2>🖼️ Multimodal (vision)</h2><p class='src-note'>Free roster models accepting image input, "
         "ranked by AA Intelligence Index as proxy (no dedicated MMMU field in the free API).</p>"

@@ -201,3 +201,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .badge-zen{background:#a855f722;color:var(--purple);border:1px solid #a855f755}
 .badge-plan{background:#f59e0b22;color:var(--amber);border:1px solid #f59e0b55}
 .src-note{font-size:.78rem;color:var(--muted)}
+.desc{display:block;min-width:24ch;max-width:52ch;white-space:normal}
+.table-wrap td:last-child{width:auto}
+.table-wrap th:nth-child(n+5),.table-wrap td:nth-child(n+5){white-space:normal}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;width:9ch}

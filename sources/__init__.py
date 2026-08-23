@@ -110,14 +110,39 @@ def fetch_opencode_zen():
     except Exception as e:
         return [], f"zen: {e}"
     listed = {m["id"] for m in data}
+    # Zen /v1/models has no descriptions — enrich from models.dev catalog
+    # (description-only lookup, models.dev is NOT a roster source)
+    desc_by_id = _zen_descriptions_from_modelsdev()
     models = []
     for mid in ZEN_FREE_IDS:
         if mid in listed or normalize_id(mid) in {normalize_id(x) for x in listed}:
-            models.append(make_model(mid, description="", source="opencode-zen",
+            models.append(make_model(mid,
+                                     description=desc_by_id.get(normalize_id(mid), ""),
+                                     context_length=desc_by_id.get("_ctx:" + normalize_id(mid)),
+                                     source="opencode-zen",
                                      free_basis="zen-free"))
     missing = [m for m in ZEN_FREE_IDS if normalize_id(m) not in {normalize_id(m2["id"]) for m2 in data}]
     err = "" if not missing else f"zen: gone from live list: {missing}"
     return models, err
+
+
+def _zen_descriptions_from_modelsdev():
+    """Description enrichment only: id -> description (and _ctx:id -> context)."""
+    try:
+        providers = _get_json("https://models.dev/api.json")
+    except Exception:
+        return {}
+    out = {}
+    for prov in providers.values():
+        for mid, m in (prov.get("models") or {}).items():
+            key = normalize_id(mid)
+            d = (m.get("description") or "").strip()
+            ctx = (m.get("limit") or {}).get("context")
+            if d and key not in out:
+                out[key] = d
+            if ctx and ("_ctx:" + key) not in out:
+                out["_ctx:" + key] = ctx
+    return out
 
 
 ALL_SOURCES = [

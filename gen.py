@@ -47,7 +47,7 @@ def render_ranking(models, generated_at):
     body = f"""
 <section class="page-head"><h1>Free Models — Ranked by Use Case</h1>
 <p class="lead">Strictly free models only (<strong>price&nbsp;==&nbsp;0</strong>, no micro-pricing).
-Auto-discovered from <strong>OpenRouter, Nous Portal, models.dev and OpenCode Zen</strong> on every refresh.
+Auto-discovered from <strong>OpenRouter, Nous Portal and OpenCode Zen</strong> on every refresh.
 New free models appear automatically; stale ones are removed.</p></section>
 <p class="src-note">{len(models)} free models confirmed by at least one source · badges: $0 = verified zero pricing, zen free = limited-time OpenCode Zen roster, in-plan = $0 within a subscription plan</p>
 {table(headers, model_rows(models))}"""
@@ -77,7 +77,7 @@ def render_index(models, d, history, statuses, generated_at):
 <a class="card" href="comparisons-benchmarks.html"><div class="c-icon"></div><h3>Benchmarks — Free Roster vs Paid Frontier</h3>
 <p>How the current free roster scores on Artificial Analysis benchmarks, with the best paid model as reference.</p><span class="c-type">Comparison</span></a>
 <a class="card" href="comparisons-free-models-ranking.html"><div class="c-icon"></div><h3>Free Models — Ranked by Use Case</h3>
-<p>Strictly $0 models across OpenRouter, Nous Portal, models.dev and OpenCode Zen. Auto-refreshed daily.</p><span class="c-type">Comparison</span></a>"""
+<p>Strictly $0 models across OpenRouter, Nous Portal and OpenCode Zen. Auto-refreshed daily.</p><span class="c-type">Comparison</span></a>"""
     body = f"""
 <section class="hero"><h1>Free-tier model knowledge base</h1>
 <p class="lead">Hermes Agent — inventory of the <strong>truly free</strong> models available across

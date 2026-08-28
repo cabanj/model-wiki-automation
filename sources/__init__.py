@@ -110,20 +110,39 @@ def fetch_opencode_zen():
     except Exception as e:
         return [], f"zen: {e}"
     listed = {m["id"] for m in data}
-    # Zen /v1/models has no descriptions — enrich from models.dev catalog
-    # (description-only lookup, models.dev is NOT a roster source)
+    # Zen /v1/models has no descriptions or prices — enrich from models.dev
+    # (description-only lookup, models.dev is NOT a roster source) AND
+    # verify zero pricing via OpenRouter API (Zen models are also listed there).
     desc_by_id = _zen_descriptions_from_modelsdev()
+    or_pricing = _openrouter_pricing()
     models = []
     for mid in ZEN_FREE_IDS:
-        if mid in listed or normalize_id(mid) in {normalize_id(x) for x in listed}:
-            models.append(make_model(mid,
-                                     description=desc_by_id.get(normalize_id(mid), ""),
-                                     context_length=desc_by_id.get("_ctx:" + normalize_id(mid)),
-                                     source="opencode-zen",
-                                     free_basis="zen-free"))
+        if mid not in listed and normalize_id(mid) not in {normalize_id(x) for x in listed}:
+            continue
+        # strict price==0 check: reject micro-priced models (e.g. muse-spark-1.2-contributor)
+        # try both bare id and with known prefixes (OpenRouter may prefix with provider)
+        price = or_pricing.get(normalize_id(mid))
+        if price is None:
+            price = or_pricing.get("meta/" + normalize_id(mid))
+        if price is not None and not is_zero_price(price):
+            continue
+        models.append(make_model(mid,
+                                 description=desc_by_id.get(normalize_id(mid), ""),
+                                 context_length=desc_by_id.get("_ctx:" + normalize_id(mid)),
+                                 source="opencode-zen",
+                                 free_basis="zen-free"))
     missing = [m for m in ZEN_FREE_IDS if normalize_id(m) not in {normalize_id(m2["id"]) for m2 in data}]
     err = "" if not missing else f"zen: gone from live list: {missing}"
     return models, err
+
+
+def _openrouter_pricing():
+    """Map normalized model id -> pricing dict, from OpenRouter catalog."""
+    try:
+        data = _get_json("https://openrouter.ai/api/v1/models")["data"]
+    except Exception:
+        return {}
+    return {normalize_id(m["id"]): m.get("pricing") for m in data}
 
 
 def _zen_descriptions_from_modelsdev():

@@ -19,12 +19,14 @@ ICONS = {
     "home": '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
     "bench": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
     "list": '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>',
+    "router": '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/><line x1="12" y1="12" x2="20" y2="12"/><line x1="12" y1="5" x2="20" y2="5"/>',
 }
 
 PAGES = [
     ("index.html", "Home", "home"),
     ("comparisons-benchmarks.html", "Benchmarks — Free Roster vs Paid Frontier", "bench"),
     ("comparisons-free-models-ranking.html", "Free Models — Ranked by Use Case", "list"),
+    ("comparisons-router-changelog.html", "Router — Model Chain Changes", "router"),
 ]
 
 

@@ -12,7 +12,7 @@ python3 bench.py
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 sudo cp -r /var/www/model-wiki "/var/www/model-wiki.bak-$STAMP"
 sudo find /var/www/model-wiki -name '*.bak-*' -maxdepth 1 -mtime +14 -exec rm -rf {} + 2>/dev/null || true
-sudo cp dist/index.html dist/comparisons-free-models-ranking.html dist/comparisons-benchmarks.html /var/www/model-wiki/
+sudo cp dist/index.html dist/comparisons-free-models-ranking.html dist/comparisons-benchmarks.html dist/comparisons-router-changelog.html /var/www/model-wiki/
 
 # smoke test
 sleep 1

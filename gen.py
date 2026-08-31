@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sources import collect_all
 from sources.common import normalize_id, is_junk
 import snapshot as S
-from render import page, table, model_rows, esc
+from render import page, table, model_rows, esc, fmt_ts
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
 
@@ -152,11 +152,13 @@ def render_index(models, d, history, statuses, generated_at):
         if d["removed"]:
             parts.append("<strong>Removed:</strong> " + ", ".join(f"<code>{esc(i)}</code>" for i in d["removed"]))
         change_html = "<blockquote>This run — " + " · ".join(parts) + "</blockquote>"
+    # History table: sorted most recent first, formatted timestamps
+    hist_sorted = sorted(history or [], key=lambda h: h.get("at", ""), reverse=True)
     hist_rows = [
-        [h["at"],
+        [fmt_ts(h["at"]),
          ", ".join(f"<code>{esc(i)}</code>" for i in h["added"]) or "—",
          ", ".join(f"<code>{esc(i)}</code>" for i in h["removed"]) or "—"]
-        for h in history[:5]]
+        for h in hist_sorted[:5]]
     cards = f"""
 <a class="card" href="comparisons-benchmarks.html"><div class="c-icon"></div><h3>Benchmarks — Free Roster vs Paid Frontier</h3>
 <p>How the current free roster scores on Artificial Analysis benchmarks, with the best paid model as reference.</p><span class="c-type">Comparison</span></a>
@@ -167,7 +169,8 @@ def render_index(models, d, history, statuses, generated_at):
     body = f"""
 <section class="hero"><h1>Free-tier model knowledge base</h1>
 <p class="lead">Hermes Agent — inventory of the <strong>truly free</strong> models available across
-configured providers. Strict rule: listed price must be exactly <strong>$0</strong>.</p></section>
+configured providers. Strict rule: listed price must be exactly <strong>$0</strong>.</p>
+<p class="src-note">Last updated: <strong>{fmt_ts(generated_at)}</strong></p></section>
 <blockquote>Current roster: <strong>{n} free models</strong>. Sources this run: {esc(src_bits)}</blockquote>
 {change_html}
 <div class="card-grid">{cards}</div>

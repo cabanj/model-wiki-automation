@@ -2,6 +2,7 @@
 
 import os
 import html as H
+from datetime import datetime
 
 TEMPLATE_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_CSS = open(os.path.join(TEMPLATE_DIR, "render", "base.css"), encoding="utf-8").read()
@@ -9,6 +10,15 @@ BASE_CSS = open(os.path.join(TEMPLATE_DIR, "render", "base.css"), encoding="utf-
 
 def esc(s):
     return H.escape(str(s if s is not None else ""))
+
+
+def fmt_ts(ts):
+    """Format ISO timestamp to YYYY-mm-dd HH:mm."""
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone()
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return ts[:16].replace("T", " ")
 
 
 def fmt_context(n):
@@ -68,11 +78,11 @@ def page(title, active, body, generated_at, extra_head=""):
   <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>  </button>
   <a class="htitle" href="index.html">Hermes Model Wiki</a>
-  <div class="header-meta"><time datetime="{generated_at[:10]}">{generated_at[:10]}</time></div>
+  <div class="header-meta"><time datetime="{generated_at[:10]}">{fmt_ts(generated_at)}</time></div>
 </header>
 <main class="main" role="main" id="main-content">
 {body}
-  <footer class="footer">Generated {generated_at} · Auto-refreshes daily · Powered by Hermes</footer>
+  <footer class="footer">Generated {fmt_ts(generated_at)} · Auto-refreshes daily · Powered by Hermes</footer>
 </main>
 <script>
 document.querySelector('.nav-toggle').addEventListener('click',function(){{

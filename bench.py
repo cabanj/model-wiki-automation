@@ -5,22 +5,21 @@ import json
 import os
 import sys
 import urllib.request
+import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from render import page, table, esc
+from render import page, table, esc, fmt_ts
 from snapshot import load_snapshot
 
 AA_URL = ("https://artificialanalysis.ai/api/v2/data/llms/models"
           "?fields=model_name,creator_name,intelligence_index,coding_index,agentic_index,"
-          "median_output_tokens_per_second,median_time_to_first_token_seconds")
+          "evaluations,gpqa,terminalbench_hard,median_output_tokens_per_second,"
+          "median_time_to_first_token_seconds")
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "benchmarks-cache.json")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist", "comparisons-benchmarks.html")
 
-# paid frontier reference per category
-REFERENCE = {"name": "Claude Opus 5 (Adaptive Reasoning)",
-             "intelligence": 62.5, "coding": 77.0, "agentic": 58.4}
-
+# Benchmark categories: title, field_key, description
 CATEGORIES = [
     ("🧠 Overall intelligence", "artificial_analysis_intelligence_index",
      "AA Intelligence Index — agents, coding, scientific reasoning, general knowledge."),
@@ -28,7 +27,12 @@ CATEGORIES = [
      "AA Coding Index — code generation, completion, review."),
     ("🤖 Agentic coding / terminal", "terminalbench_hard",
      "Terminal-Bench Hard — agentic terminal usage, tool use, multi-step workflows (0-1 scale)."),
+    ("🔬 Scientific reasoning (GPQA)", "gpqa",
+     "GPQA Diamond accuracy — graduate-level scientific reasoning benchmark (0-1 scale)."),
 ]
+
+# Fields that are on a 0-1 scale (display as percentage)
+PERCENT_FIELDS = {"gpqa", "terminalbench_hard"}
 
 # Multimodal: separate section — roster models that accept image input,
 # ranked by AA Intelligence Index (no dedicated MMMU field in the free API).
@@ -141,15 +145,15 @@ def _split(s):
 
 
 def render(models, generated_at):
+    # Fetch AA direct data
     aa_data, err = fetch_aa()
     from_cache = False
     if aa_data is None:
         aa_data = load_cached()
         from_cache = bool(aa_data)
-
     matched = match_free(models, aa_data)
 
-    # paid frontier: top 3 paid AA models per category (by that category's score)
+    # paid frontier: top 3 paid AA models per category
     def top_paid(field, n=3):
         scored = [(a.get(field), a) for a in aa_data
                   if a.get(field) is not None
@@ -159,8 +163,10 @@ def render(models, generated_at):
 
     TOP_N_FREE = 3
 
-    def fmt_score(v):
-        """2 decimal places max, no trailing-zero noise."""
+    def fmt_score(v, field=None):
+        """Format score: percentage for 0-1 scale fields, else 2 decimals."""
+        if isinstance(v, float) and 0 <= v <= 1 and field in PERCENT_FIELDS:
+            return f"{v * 100:.1f}%"
         if isinstance(v, float) and 0 <= v <= 1:
             return f"{v:.2f}"
         return f"{float(v):.2f}"
@@ -178,13 +184,13 @@ def render(models, generated_at):
         for i, (v, m) in enumerate(scored[:TOP_N_FREE]):
             star = " ⭐" if i == 0 else ""
             rows.append([f'<code>{esc(m["display_id"])}</code>',
-                         f'<span class="badge badge-free">free</span> {fmt_score(v)}{star}'])
+                         f'<span class="badge badge-free">free</span> {fmt_score(v, field)}{star}'])
         for v, a in top_paid(field):
             name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
             rows.append([f"<em>{esc(name)} *</em>",
-                         f'<span class="badge badge-plan">paid</span> {fmt_score(v)}'])
-        no_data_count = sum(1 for m in models if m["id"] not in matched)
-        note = (f" <span class='src-note'>({no_data_count} roster models without AA data omitted)</span>"
+                         f'<span class="badge badge-plan">paid</span> {fmt_score(v, field)}'])
+        no_data_count = sum(1 for m in models if (matched.get(m["id"]) or {}).get(field) is None)
+        note = (f" <span class='src-note'>({no_data_count} roster models without data for this category omitted)</span>"
                 if no_data_count else "")
         sections.append(f"<h2>{title}</h2><p class='src-note'>{desc}{note}</p>"
                         + table(["Model", "Score"], rows))
@@ -195,18 +201,18 @@ def render(models, generated_at):
     mm = [(v, m) for v, m in mm if v is not None]
     mm.sort(key=lambda x: -x[0])
     mm_rows = [[f'<code>{esc(m["display_id"])}</code>',
-                f'<span class="badge badge-free">free</span> {fmt_score(v)}{" ⭐" if i == 0 else ""}']
+                f'<span class="badge badge-free">free</span> {fmt_score(v, MULTIMODAL_FIELD)}{" ⭐" if i == 0 else ""}']
                for i, (v, m) in enumerate(mm[:TOP_N_FREE])]
     for v, a in top_paid(MULTIMODAL_FIELD):
         name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
         mm_rows.append([f"<em>{esc(name)} *</em>",
-                        f'<span class="badge badge-plan">paid</span> {fmt_score(v)}'])
+                        f'<span class="badge badge-plan">paid</span> {fmt_score(v, MULTIMODAL_FIELD)}'])
     sections.append(
         "<h2>🖼️ Multimodal (vision)</h2><p class='src-note'>Free roster models accepting image input, "
-        "ranked by AA Intelligence Index as proxy (no dedicated MMMU field in the free API).</p>"
+        "ranked by AA Intelligence Index as proxy (no dedicated MMMU field in AA free API).</p>"
         + table(["Model", "Score"], mm_rows))
 
-    # Summary: best free model per use-case, computed from the matched AA data only.
+    # Summary: best free model per use-case
     def best_free(field):
         scored = [(matched[m["id"]].get(field), m) for m in models
                   if m["id"] in matched]
@@ -218,7 +224,7 @@ def render(models, generated_at):
         ("Everyday model", "artificial_analysis_intelligence_index",
          "best general intelligence — good balance of quality, speed and context"),
         ("Research", "gpqa",
-         "GPQA — scientific reasoning benchmark, proxy for research-grade work"),
+         "GPQA Diamond — scientific reasoning benchmark, proxy for research-grade work"),
         ("Coding", "artificial_analysis_coding_index",
          "AA Coding Index — code generation and review"),
     ]
@@ -228,21 +234,24 @@ def render(models, generated_at):
         if m:
             sum_rows.append([f"<strong>{label}</strong>",
                              f'<code>{esc(m["display_id"])}</code>',
-                             esc(desc), str(v)])
+                             esc(desc), fmt_score(v, field)])
     sections.append(
         "<h2>📌 Summary — best free model per use case</h2>"
-        "<p class='src-note'>Derived strictly from the Artificial Analysis data above; "
-        "'everyday model' weighs overall intelligence, latency and context.</p>"
+        "<p class='src-note'>Derived from Artificial Analysis data above; "
+        "'everyday model' = best general intelligence, 'research' = GPQA, 'coding' = AA Coding Index.</p>"
         + table(["Use case", "Model", "Why", "Score"], sum_rows))
 
-    src_note = "Live from Artificial Analysis API"
-    if err and from_cache:
-        src_note = f"⚠ AA live fetch failed ({esc(err)[:80]}) — showing cached data"
+    # Source note
+    if err:
+        src_note = f"⚠ AA live fetch failed ({esc(err)[:60]}) — cached data"
+    else:
+        src_note = "Live from Artificial Analysis API"
+
     body = f"""
 <section class="page-head"><h1>Benchmarks — Free Roster vs Paid Frontier</h1>
 <p class="lead">Top {TOP_N_FREE} <strong>$0 roster models</strong> vs top-3 paid alternatives per category,
-from public Artificial Analysis benchmarks. Best free model marked ⭐.</p></section>
-<p class="src-note">Source: {src_note}</p>
+from public AI benchmarks. Best free model marked ⭐.</p></section>
+<p class="src-note">Source: {src_note} · Last updated {fmt_ts(generated_at)}</p>
 {''.join(sections)}"""
     return page("Benchmarks — Free Roster vs Paid Frontier",
                 "comparisons-benchmarks.html", body, generated_at)

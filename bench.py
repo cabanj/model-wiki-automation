@@ -94,8 +94,28 @@ AA_ALIASES = {
     "stepfun/step-3.7-flash": "Step 3.7 Flash",
     "thinkingmachines/inkling": "Inkling (xhigh)",
     "thinkingmachines/inkling-small": "Inkling Small",
+    "tencent/hy3": "Hy3",
     "muse-spark-1.2-contributor": "Muse Spark 1.2 (xhigh)",
 }
+
+
+# Free roster models excluded from benchmark ranking: benchmarked high but
+# practically unusable on the free tier (persistent 429 / no credits).
+# Mirrors hermes-router KNOWN_BROKEN_IDS; keep the two lists in sync manually.
+BENCH_EXCLUDE = frozenset({
+    "z-ai/glm-5.2",
+})
+
+
+def rank_free_for_field(free_models, aa_models, field, top_n=3):
+    """Top-N free models by AA field, excluding BENCH_EXCLUDE.
+    Returns [(value, model)] sorted desc; models without data omitted."""
+    matched = match_free(free_models, aa_models)
+    scored = [(matched[m["id"]].get(field), m) for m in free_models
+              if m["id"] not in BENCH_EXCLUDE and m["id"] in matched]
+    scored = [(v, m) for v, m in scored if v is not None]
+    scored.sort(key=lambda x: -x[0])
+    return scored[:top_n]
 
 
 def match_free(free_models, aa_models):
@@ -173,15 +193,9 @@ def render(models, generated_at):
 
     sections = []
     for title, field, desc in CATEGORIES:
-        scored = []
-        for m in models:
-            a = matched.get(m["id"])
-            v = (a or {}).get(field) if a else None
-            if v is not None:
-                scored.append((v, m))
-        scored.sort(key=lambda x: -x[0])
+        scored = rank_free_for_field(models, aa_data, field, TOP_N_FREE)
         rows = []
-        for i, (v, m) in enumerate(scored[:TOP_N_FREE]):
+        for i, (v, m) in enumerate(scored):
             star = " ⭐" if i == 0 else ""
             rows.append([f'<code>{esc(m["display_id"])}</code>',
                          f'<span class="badge badge-free">free</span> {fmt_score(v, field)}{star}'])
@@ -189,7 +203,9 @@ def render(models, generated_at):
             name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
             rows.append([f"<em>{esc(name)} *</em>",
                          f'<span class="badge badge-plan">paid</span> {fmt_score(v, field)}'])
-        no_data_count = sum(1 for m in models if (matched.get(m["id"]) or {}).get(field) is None)
+        no_data_count = sum(1 for m in models
+                            if m["id"] not in BENCH_EXCLUDE
+                            and (matched.get(m["id"]) or {}).get(field) is None)
         note = (f" <span class='src-note'>({no_data_count} roster models without data for this category omitted)</span>"
                 if no_data_count else "")
         sections.append(f"<h2>{title}</h2><p class='src-note'>{desc}{note}</p>"
@@ -197,7 +213,7 @@ def render(models, generated_at):
 
     # multimodal section: free roster models with image input, ranked by intel index
     mm = [(matched[m["id"]].get(MULTIMODAL_FIELD), m) for m in models
-          if is_multimodal(m) and m["id"] in matched]
+          if m["id"] not in BENCH_EXCLUDE and is_multimodal(m) and m["id"] in matched]
     mm = [(v, m) for v, m in mm if v is not None]
     mm.sort(key=lambda x: -x[0])
     mm_rows = [[f'<code>{esc(m["display_id"])}</code>',
@@ -214,11 +230,8 @@ def render(models, generated_at):
 
     # Summary: best free model per use-case
     def best_free(field):
-        scored = [(matched[m["id"]].get(field), m) for m in models
-                  if m["id"] in matched]
-        scored = [(v, m) for v, m in scored if v is not None]
-        scored.sort(key=lambda x: -x[0])
-        return scored[0] if scored else (None, None)
+        ranked = rank_free_for_field(models, aa_data, field, top_n=1)
+        return ranked[0] if ranked else (None, None)
 
     summary_specs = [
         ("Everyday model", "artificial_analysis_intelligence_index",

@@ -32,3 +32,10 @@ def test_excluded_model_absent_from_ranking():
     ids = [m["id"] for _, m in ranked]
     assert "z-ai/glm-5.2" not in ids
     assert "meituan/longcat-2.0" in ids
+
+
+def test_paid_proxy_mark():
+    assert B.proxy_mark({"pricing": {"price_1m_blended_3_to_1": 0.241}}) == "‡"
+    assert B.proxy_mark({"pricing": {"price_1m_blended_3_to_1": 0}}) == ""
+    assert B.proxy_mark({}) == ""
+    assert B.proxy_mark(None) == ""

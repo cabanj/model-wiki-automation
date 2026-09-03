@@ -118,6 +118,19 @@ def rank_free_for_field(free_models, aa_models, field, top_n=3):
     return scored[:top_n]
 
 
+def is_paid_proxy(aa_entry):
+    """True when the matched AA entry is a paid record, i.e. the displayed
+    score is the paid variant shown as proxy (no free-variant benchmark)."""
+    if not aa_entry:
+        return False
+    return float((aa_entry.get("pricing") or {}).get("price_1m_blended_3_to_1", 0) or 0) > 0
+
+
+def proxy_mark(aa_entry):
+    """'‡' for paid-proxy scores, '' otherwise."""
+    return "‡" if is_paid_proxy(aa_entry) else ""
+
+
 def match_free(free_models, aa_models):
     """Map normalized free-model ids to AA entries.
     Matching uses only 'significant' tokens: >=3 chars and not pure numbers.
@@ -197,8 +210,9 @@ def render(models, generated_at):
         rows = []
         for i, (v, m) in enumerate(scored):
             star = " ⭐" if i == 0 else ""
+            mark = proxy_mark(matched.get(m["id"]))
             rows.append([f'<code>{esc(m["display_id"])}</code>',
-                         f'<span class="badge badge-free">free</span> {fmt_score(v, field)}{star}'])
+                         f'<span class="badge badge-free">free</span> {fmt_score(v, field)}{mark}{star}'])
         for v, a in top_paid(field):
             name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
             rows.append([f"<em>{esc(name)} *</em>",
@@ -217,7 +231,7 @@ def render(models, generated_at):
     mm = [(v, m) for v, m in mm if v is not None]
     mm.sort(key=lambda x: -x[0])
     mm_rows = [[f'<code>{esc(m["display_id"])}</code>',
-                f'<span class="badge badge-free">free</span> {fmt_score(v, MULTIMODAL_FIELD)}{" ⭐" if i == 0 else ""}']
+                f'<span class="badge badge-free">free</span> {fmt_score(v, MULTIMODAL_FIELD)}{proxy_mark(matched.get(m["id"]))}{" ⭐" if i == 0 else ""}']
                for i, (v, m) in enumerate(mm[:TOP_N_FREE])]
     for v, a in top_paid(MULTIMODAL_FIELD):
         name = f"{a['name']} ({(a.get('model_creator') or {}).get('name', '')})"
@@ -247,7 +261,7 @@ def render(models, generated_at):
         if m:
             sum_rows.append([f"<strong>{label}</strong>",
                              f'<code>{esc(m["display_id"])}</code>',
-                             esc(desc), fmt_score(v, field)])
+                             esc(desc), fmt_score(v, field) + proxy_mark(matched.get(m["id"]))])
     sections.append(
         "<h2>📌 Summary — best free model per use case</h2>"
         "<p class='src-note'>Derived from Artificial Analysis data above; "
@@ -265,6 +279,7 @@ def render(models, generated_at):
 <p class="lead">Top {TOP_N_FREE} <strong>$0 roster models</strong> vs top-3 paid alternatives per category,
 from public AI benchmarks. Best free model marked ⭐.</p></section>
 <p class="src-note">Source: {src_note} · Last updated {fmt_ts(generated_at)}</p>
+<p class="src-note">‡ — score of the paid variant shown as proxy (no free-variant benchmark in AA).</p>
 {''.join(sections)}"""
     return page("Benchmarks — Free Roster vs Paid Frontier",
                 "comparisons-benchmarks.html", body, generated_at)

@@ -12,7 +12,7 @@ import re
 #   "modalities": str,      # e.g. "text", "text+image->text"
 #   "tools": bool,
 #   "sources": [str],       # which sources confirm it free
-#   "free_basis": str,      # "price-0" | "zen-free"
+#   "free_basis": str,      # "price-0" | "zen-free" | "zen-micro" | "plan"
 # }
 
 # IDs that are routers/aggregators/UI helpers or otherwise not real callable

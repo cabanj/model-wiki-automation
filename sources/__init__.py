@@ -101,7 +101,23 @@ def fetch_modelsdev():
 ZEN_FREE_IDS = [
     "x-preview-f-free", "mimo-v2.5-free", "hy3-free", "nemotron-3-ultra-free",
     "nemotron-3.5-lightning-free", "muse-spark-1.2-contributor-free",
+    "muse-spark-1.3-contributor-free",
 ]
+
+# Explicit micro-price exemptions (normalized ids): free on Zen, micro-priced
+# on OpenRouter. Shown with a distinct badge, never silently as $0.
+ZEN_MICRO_EXEMPT = frozenset({
+    normalize_id("muse-spark-1.3-contributor-free"),
+})
+
+
+def _zen_basis(mid, price):
+    """free_basis for a Zen-curated id, or None to reject from the roster."""
+    if price is None or is_zero_price(price):
+        return "zen-free"
+    if normalize_id(mid) in ZEN_MICRO_EXEMPT:
+        return "zen-micro"
+    return None
 
 
 def fetch_opencode_zen():
@@ -119,18 +135,19 @@ def fetch_opencode_zen():
     for mid in ZEN_FREE_IDS:
         if mid not in listed and normalize_id(mid) not in {normalize_id(x) for x in listed}:
             continue
-        # strict price==0 check: reject micro-priced models (e.g. muse-spark-1.2-contributor)
+        # strict price==0 check (1.2-contributor rejected here: micro-priced);
         # try both bare id and with known prefixes (OpenRouter may prefix with provider)
         price = or_pricing.get(normalize_id(mid))
         if price is None:
             price = or_pricing.get("meta/" + normalize_id(mid))
-        if price is not None and not is_zero_price(price):
+        basis = _zen_basis(mid, price)
+        if basis is None:
             continue
         models.append(make_model(mid,
                                  description=desc_by_id.get(normalize_id(mid), ""),
                                  context_length=desc_by_id.get("_ctx:" + normalize_id(mid)),
                                  source="opencode-zen",
-                                 free_basis="zen-free"))
+                                 free_basis=basis))
     missing = [m for m in ZEN_FREE_IDS if normalize_id(m) not in {normalize_id(m2["id"]) for m2 in data}]
     err = "" if not missing else f"zen: gone from live list: {missing}"
     return models, err

@@ -3,6 +3,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sources.common import normalize_id, is_zero_price, make_model, merge
 from sources import fetch_modelsdev, fetch_opencode_zen, collect_all
+from sources import _zen_basis
 
 
 def test_normalize():
@@ -43,6 +44,15 @@ def test_zen_gone_ids_reported():
     ids = {m["id"] for m in models}
     # whatever is curated must either be live or reported as error by caller
     assert isinstance(ids, set)
+
+
+def test_zen_basis_micro_exempt():
+    micro = {"prompt": "0.0000001", "completion": "0.0000002"}
+    zero = {"prompt": "0", "completion": "0"}
+    assert _zen_basis("muse-spark-1.3-contributor-free", micro) == "zen-micro"
+    assert _zen_basis("muse-spark-1.2-contributor-free", micro) is None  # not exempt
+    assert _zen_basis("muse-spark-1.3-contributor-free", zero) == "zen-free"
+    assert _zen_basis("muse-spark-1.3-contributor-free", None) == "zen-free"
 
 
 def test_collect_all_never_raises_and_merges():

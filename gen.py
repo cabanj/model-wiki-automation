@@ -182,8 +182,9 @@ configured providers. Strict rule: listed price must be exactly <strong>$0</stro
 def main():
     merged, statuses = collect_all()
     # strict: drop anything not provably $0 or explicitly zen-curated,
-    # plus routers/aggregators/UI helpers that aren't real callable models
-    models = [m for m in merged if m["free_basis"] in ("price-0", "zen-free")
+    # plus routers/aggregators/UI helpers that aren't real callable models.
+    # "zen-micro" = explicit micro-price exemption (free on Zen, badge-labeled).
+    models = [m for m in merged if m["free_basis"] in ("price-0", "zen-free", "zen-micro")
               and not is_junk(m)]
     old = S.load_snapshot()
     d = S.diff(old["models"] if old else [], models)

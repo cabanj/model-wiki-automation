@@ -126,6 +126,7 @@ def table(headers, rows, cls=""):
 BADGES = {
     "price-0": '<span class="badge badge-free">$0</span>',
     "zen-free": '<span class="badge badge-zen">zen free</span>',
+    "zen-micro": '<span class="badge badge-zen">zen micro</span>',
     "plan": '<span class="badge badge-plan">in-plan</span>',
 }
 

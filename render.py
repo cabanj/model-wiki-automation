@@ -1,4 +1,4 @@
-"""HTML rendering: base template extracted 1:1 from the deployed wiki pages."""
+"""Shared HTML rendering for the model wiki."""
 
 import os
 import html as H
@@ -9,11 +9,10 @@ BASE_CSS = open(os.path.join(TEMPLATE_DIR, "render", "base.css"), encoding="utf-
 
 
 def esc(s):
-    return H.escape(str(s if s is not None else ""))
+    return H.escape(str(s if s is not None else ""), quote=True)
 
 
 def fmt_ts(ts):
-    """Format ISO timestamp to YYYY-mm-dd HH:mm."""
     try:
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone()
         return dt.strftime("%Y-%m-%d %H:%M")
@@ -28,15 +27,15 @@ def fmt_context(n):
 ICONS = {
     "home": '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
     "bench": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
-    "list": '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>',
+    "list": '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
     "router": '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/><line x1="12" y1="12" x2="20" y2="12"/><line x1="12" y1="5" x2="20" y2="5"/>',
 }
 
 PAGES = [
     ("index.html", "Home", "home"),
-    ("comparisons-benchmarks.html", "Benchmarks — Free Roster vs Paid Frontier", "bench"),
-    ("comparisons-free-models-ranking.html", "Free Models — Ranked by Use Case", "list"),
-    ("comparisons-router-changelog.html", "Router — Model Chain Changes", "router"),
+    ("comparisons-benchmarks.html", "Benchmarks", "bench"),
+    ("comparisons-free-models-ranking.html", "Free models", "list"),
+    ("comparisons-router-changelog.html", "Router changes", "router"),
 ]
 
 
@@ -47,8 +46,8 @@ def page(title, active, body, generated_at, extra_head=""):
         aria = ' aria-current="page"' if href == active else ""
         nav.append(
             f'<a href="{href}" class="nav-link{cur}"{aria} title="{esc(label)}">'
-            f'<span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-            f'stroke-width="2" width="18" height="18">{ICONS[icon]}</svg></span>'
+            f'<span class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            f'stroke-width="1.7" width="18" height="18">{ICONS[icon]}</svg></span>'
             f'<span class="nav-title">{esc(label)}</span></a>')
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -66,79 +65,133 @@ def page(title, active, body, generated_at, extra_head=""):
 <a class="skip-link" href="#main-content">Skip to content</a>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-brand"><a href="index.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
     <span>Hermes Wiki</span></a>
   </div>
-  <div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>  <input class="search-input" id="search-input" type="search" placeholder="Filter pages…" aria-label="Filter wiki pages"></div>
   <nav class="sidebar-nav" aria-label="Wiki pages">
-{''.join(nav)}
+    <div class="nav-section">Explore</div>
+    {''.join(nav)}
   </nav>
 </aside>
+<div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
 <header class="header" role="banner">
-  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>  </button>
+  <button class="nav-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
+<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
   <a class="htitle" href="index.html">Hermes Model Wiki</a>
-  <div class="header-meta"><time datetime="{generated_at[:10]}">{fmt_ts(generated_at)}</time></div>
+  <div class="header-meta"><span>Model intelligence</span><time datetime="{esc(generated_at)}">{fmt_ts(generated_at)}</time></div>
 </header>
 <main class="main" role="main" id="main-content">
-{body}
-  <footer class="footer">Generated {fmt_ts(generated_at)} · Auto-refreshes daily · Powered by Hermes</footer>
+  {body}
+  <footer class="footer">Generated {fmt_ts(generated_at)} · Sources refresh daily · Paid proxy scores are labelled explicitly</footer>
 </main>
 <script>
-document.querySelector('.nav-toggle').addEventListener('click',function(){{
-  var s=document.getElementById('sidebar');s.classList.toggle('open');
-  this.setAttribute('aria-expanded',s.classList.contains('open'));
-}});
-document.addEventListener('DOMContentLoaded',function(){{
-  var input=document.getElementById('search-input');
-  if(!input)return;
-  input.addEventListener('input',function(){{
-    var q=this.value.toLowerCase().trim();
-    document.querySelectorAll('.nav-link').forEach(function(link){{
-      var title=link.querySelector('.nav-title');
-      if(!title){{link.classList.remove('hidden');return}}
-      var txt=title.textContent.toLowerCase();
-      if(!q||txt.indexOf(q)!==-1)link.classList.remove('hidden');
-      else link.classList.add('hidden');
-    }});
+(function(){{
+  var toggle=document.querySelector('.nav-toggle');
+  var sidebar=document.getElementById('sidebar');
+  var backdrop=document.getElementById('nav-backdrop');
+  var mobile=window.matchMedia('(max-width:1024px)');
+  var open=false;
+  function setOpen(next){{
+    open=next;
+    sidebar.classList.toggle('open',open);
+    backdrop.classList.toggle('visible',open);
+    toggle.setAttribute('aria-expanded',String(open));
+    toggle.setAttribute('aria-label',open?'Close navigation':'Open navigation');
+    if(mobile.matches&&!open){{sidebar.setAttribute('inert','');sidebar.setAttribute('aria-hidden','true')}}
+    else{{sidebar.removeAttribute('inert');sidebar.removeAttribute('aria-hidden')}}
+    if(open){{var first=sidebar.querySelector('a');if(first)first.focus()}}
+  }}
+  function syncViewport(){{if(!mobile.matches){{sidebar.classList.remove('open');backdrop.classList.remove('visible');open=false;toggle.setAttribute('aria-expanded','false')}}setOpen(open)}}
+  toggle.addEventListener('click',function(){{setOpen(!open)}});
+  backdrop.addEventListener('click',function(){{setOpen(false);toggle.focus()}});
+  sidebar.querySelectorAll('a').forEach(function(link){{link.addEventListener('click',function(){{if(mobile.matches)setOpen(false)}})}});
+  document.addEventListener('keydown',function(event){{if(event.key==='Escape'&&open){{setOpen(false);toggle.focus()}}}});
+  mobile.addEventListener('change',syncViewport);
+  setOpen(false);
+  document.querySelectorAll('[data-model-filter]').forEach(function(root){{
+    var input=root.querySelector('[data-model-filter-input]');
+    var role=root.querySelector('[data-model-filter-role]');
+    var rows=Array.prototype.slice.call(root.querySelectorAll('[data-model-row]'));
+    var groups=Array.prototype.slice.call(root.querySelectorAll('[data-model-group]'));
+    var count=root.querySelector('[data-model-filter-count]');
+    var empty=root.querySelector('[data-model-filter-empty]');
+    function apply(){{
+      var query=(input?input.value:'').toLowerCase().trim();
+      var selected=role?role.value:'';
+      var visible=0;
+      rows.forEach(function(row){{
+        var matchText=!query||row.getAttribute('data-model-search').indexOf(query)!==-1;
+        var matchRole=!selected||row.getAttribute('data-model-role')===selected;
+        row.hidden=!(matchText&&matchRole);
+        if(!row.hidden)visible++;
+      }});
+      groups.forEach(function(group){{group.hidden=!group.querySelector('[data-model-row]:not([hidden])')}});
+      if(count)count.textContent=visible+(visible===1?' model':' models');
+      if(empty)empty.hidden=visible!==0;
+    }}
+    if(input)input.addEventListener('input',apply);
+    if(role)role.addEventListener('change',apply);
+    apply();
   }});
-}});
+}}());
 </script>
 </body>
 </html>"""
 
 
-def table(headers, rows, cls=""):
-    th = "".join(f"<th>{h}</th>" for h in headers)
-    trs = "".join(f"<tr>{''.join(f'<td>{c}</td>' for c in r)}</tr>" for r in rows)
-    # fixed score column: identical width in ALL tables for visual alignment
+def table(headers, rows, cls="", caption="", row_header=None, row_attrs=None):
+    th = "".join(f'<th scope="col">{h}</th>' for h in headers)
+    trs = []
+    for i, row in enumerate(rows):
+        cells = []
+        for j, cell in enumerate(row):
+            tag = "th" if j == row_header else "td"
+            scope = ' scope="row"' if j == row_header else ""
+            cells.append(f'<{tag}{scope}>{cell}</{tag}>')
+        attrs = row_attrs[i] if row_attrs and i < len(row_attrs) else ""
+        trs.append(f'<tr{attrs}>{"".join(cells)}</tr>')
+    caption_html = (f'<caption>{esc(caption)}</caption>' if caption
+                    else f'<caption class="sr-only">{esc(" · ".join(headers))}</caption>')
     if len(headers) == 2:
         colgroup = '<col style="width:auto"><col style="width:22ch">'
-    elif len(headers) == 4:  # summary table: Use case | Model | Why | Score
+    elif len(headers) == 4:
         colgroup = ('<col style="width:auto"><col style="width:auto">'
                     '<col style="width:auto"><col style="width:22ch">')
     else:
         colgroup = ""
-    return (f'<div class="table-wrap {cls}"><table>{colgroup}<thead><tr>{th}</tr></thead>'
-            f'<tbody>{trs}</tbody></table></div>')
+    return (f'<div class="table-wrap {cls}"><table>{caption_html}{colgroup}<thead><tr>{th}</tr></thead>'
+            f'<tbody>{"".join(trs)}</tbody></table></div>')
 
 
 BADGES = {
-    "price-0": '<span class="badge badge-free">$0</span>',
-    "zen-free": '<span class="badge badge-zen">zen free</span>',
-    "zen-micro": '<span class="badge badge-zen">zen micro</span>',
-    "plan": '<span class="badge badge-plan">in-plan</span>',
+    "price-0": '<span class="badge badge-free">Verified $0</span>',
+    "zen-free": '<span class="badge badge-zen">Zen free</span>',
+    "zen-micro": '<span class="badge badge-proxy">Zen micro</span>',
+    "plan": '<span class="badge badge-plan">In plan</span>',
 }
+
+
+def model_search_text(m):
+    return " ".join(str(m.get(key) or "") for key in
+                    ("id", "display_id", "name", "description", "role", "modalities", "sources"))
+
+
+def model_row_attrs(m):
+    return (f' data-model-row data-model-id="{esc(m.get("id", ""))}" '
+            f'data-model-role="{esc(m.get("role", ""))}" '
+            f'data-model-search="{esc(model_search_text(m))}"')
 
 
 def model_rows(models, show_desc=True):
     rows = []
     for m in models:
         cells = [
-            " + ".join(m["sources"]),
-            f'<code>{esc(m["display_id"])}</code>',
-            esc(m["name"]),
+            f'<span class="role-pill">{esc(m.get("role", "General purpose fallback"))}</span>',
+            f'<code class="model-id">{esc(m.get("display_id", m.get("id", "")))}</code>'
+            f'<span class="model-name">{esc(m.get("name", ""))}</span>',
             BADGES.get(m.get("free_basis"), ""),
+            esc(" · ".join(m.get("sources", []))),
             fmt_context(m.get("context_length")),
             esc(m.get("modalities", "text")),
         ]

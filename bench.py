@@ -8,7 +8,8 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from render import esc, fmt_ts, page, table
+import render
+from render import esc, fmt_ts, model_id, page, table
 from snapshot import load_snapshot
 
 AA_URL = ("https://artificialanalysis.ai/api/v2/data/llms/models"
@@ -122,11 +123,11 @@ def match_free(free_models, aa_models):
     matched = {}
     by_name = {entry.get("name", ""): entry for _, _, entry in aa_entries}
     for model in free_models:
-        model_id = model["id"]
-        if model_id in AA_ALIASES and AA_ALIASES[model_id] in by_name:
-            matched[model_id] = by_name[AA_ALIASES[model_id]]
+        model_key = model["id"]
+        if model_key in AA_ALIASES and AA_ALIASES[model_key] in by_name:
+            matched[model_key] = by_name[AA_ALIASES[model_key]]
             continue
-        base = model_id.split("/")[-1]
+        base = model_key.split("/")[-1]
         model_tokens = {token for token in sig_tokens(base)
                         if token not in ("preview", "free", "stealth", "contributor", "reasoning")}
         best, best_score = None, 0
@@ -135,7 +136,7 @@ def match_free(free_models, aa_models):
             if score > best_score:
                 best, best_score = entry, score
         if best and best_score >= 2:
-            matched[model_id] = best
+            matched[model_key] = best
     return matched
 
 
@@ -213,8 +214,8 @@ def render(models, generated_at):
             continue
         value, model = ranked[0]
         summary_cards.append(
-            f'<article class="summary-card"><h3>{esc(label)}</h3>'
-            f'<span class="summary-model">{esc(model.get("display_id", model["id"]))}</span>'
+                f'<article class="summary-card"><h3>{esc(label)}</h3>'
+            f'<span class="summary-model">{model_id(model.get("display_id", model["id"]))}</span>'
             f'<span class="summary-score">{score_cell(value, field, model, matched.get(model["id"]))}</span>'
             f'<p>{esc(rationale)}</p></article>')
     summary_html = "".join(summary_cards)
@@ -224,7 +225,7 @@ def render(models, generated_at):
         rows = []
         for index, (value, model) in enumerate(rank_free_for_field(models, aa_data, field, TOP_N)):
             rows.append([
-                f'<code class="model-id">{esc(model.get("display_id", model["id"]))}</code>',
+                model_id(model.get("display_id", model["id"])),
                 f'<span class="badge badge-free">Free</span> {score_cell(value, field, model, matched.get(model["id"]), best=index == 0)}',
             ])
         for value, entry in top_paid(aa_data, field):

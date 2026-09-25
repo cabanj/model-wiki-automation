@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Generate the free-model directory and static wiki pages."""
 
+from datetime import datetime, timezone
+import hashlib
+import json
 import os
 import sys
+from xml.etree import ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sources import collect_all
 from sources.common import is_junk
 import snapshot as S
+import render
 from render import esc, fmt_ts, model_row_attrs, model_rows, page, table
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
@@ -88,6 +93,50 @@ def render_ranking(models, generated_at):
     return page("Free models by use case", "comparisons-free-models-ranking.html", body, generated_at)
 
 
+def render_feed(history, generated_at):
+    def rfc822(ts):
+        try:
+            return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        except Exception:
+            return ts
+    root = ET.Element("rss", {"version": "2.0"})
+    channel = ET.SubElement(root, "channel")
+    for tag, value in (("title", "Hermes Model Wiki — Model Changes"),
+                       ("link", "index.html"), ("description", "Recent additions and removals from the free model roster."),
+                       ("lastBuildDate", rfc822(generated_at))):
+        ET.SubElement(channel, tag).text = value
+    for change in sorted(history or [], key=lambda h: h.get("at", ""), reverse=True)[:20]:
+        added = change.get("added", [])
+        removed = change.get("removed", [])
+        description = "Added: " + (", ".join(added) or "none") + ". Removed: " + (", ".join(removed) or "none") + "."
+        item = ET.SubElement(channel, "item")
+        ET.SubElement(item, "title").text = f"Roster change: {len(added)} added, {len(removed)} removed"
+        ET.SubElement(item, "description").text = description
+        ET.SubElement(item, "pubDate").text = rfc822(change.get("at", ""))
+        digest = hashlib.sha256(json.dumps(change, sort_keys=True).encode()).hexdigest()
+        ET.SubElement(item, "guid").text = f"urn:model-wiki:change:{digest}"
+    return ET.tostring(root, encoding="unicode")
+
+
+def _quickstart_model(models):
+    candidates = [m for m in models if "openrouter" in m.get("sources", [])]
+    if not candidates:
+        return "openrouter/YOUR_MODEL_ID:free"
+    return sorted(candidates, key=lambda m: m.get("display_id", m.get("id", "")))[0].get("display_id", candidates[0]["id"])
+
+
+def render_quick_start(models):
+    model_id_value = _quickstart_model(models)
+    base = "https://openrouter.ai/api/v1"
+    snippets = {
+        "cURL": f'''curl {base}/chat/completions \\\n  -H "Authorization: Bearer $OPENROUTER_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d \'{{"model":"{model_id_value}","messages":[{{"role":"user","content":"Hello"}}]}}\'''',
+        "Python": f'''import os\nfrom openai import OpenAI\n\nclient = OpenAI(\n    base_url="{base}",\n    api_key=os.environ["OPENROUTER_API_KEY"],\n)\nresponse = client.chat.completions.create(\n    model="{model_id_value}",\n    messages=[{{"role": "user", "content": "Hello"}}],\n)\nprint(response.choices[0].message.content)''',
+        "TypeScript / Node.js": f'''import OpenAI from "openai";\n\nconst client = new OpenAI({{ baseURL: "{base}", apiKey: process.env.OPENROUTER_API_KEY }});\nconst response = await client.chat.completions.create({{\n  model: "{model_id_value}",\n  messages: [{{ role: "user", content: "Hello" }}],\n}});\nconsole.log(response.choices[0].message.content);''',
+    }
+    panels = "".join(f'<input type="radio" name="quickstart-tab" id="quickstart-{i}" class="quickstart-radio" {"checked" if i == 0 else ""}><label for="quickstart-{i}">{label}</label><div class="quickstart-panel"><pre><code>{esc(snippet)}</code></pre><button type="button" class="copy-button" data-copy-value="{esc(snippet)}">Copy snippet</button></div>' for i, (label, snippet) in enumerate(snippets.items()))
+    return f'''<details class="quickstart"><summary>Developer quick start</summary><p>Connect through OpenRouter, then replace this example with any copied model ID from the directory.</p><div class="quickstart-tabs">{panels}</div></details>'''
+
+
 def render_index(models, d, history, statuses, generated_at):
     n = len(models)
     source_count = len(statuses)
@@ -106,8 +155,8 @@ def render_index(models, d, history, statuses, generated_at):
     hist_sorted = sorted(history or [], key=lambda h: h.get("at", ""), reverse=True)
     hist_rows = [
         [fmt_ts(h["at"]),
-         ", ".join(f"<code>{esc(i)}</code>" for i in h["added"]) or "—",
-         ", ".join(f"<code>{esc(i)}</code>" for i in h["removed"]) or "—"]
+         ", ".join(render.model_id(i) for i in h["added"]) or "—",
+         ", ".join(render.model_id(i) for i in h["removed"]) or "—"]
         for h in hist_sorted[:5]]
     cards = f'''
 <a class="card" href="comparisons-free-models-ranking.html"><span class="card-kicker">Directory</span><h3>Find a free model</h3><p>Filter the current roster by use case, model ID, source, modality, or capability.</p><div class="card-meta"><span>{n} models</span><span class="card-arrow">→</span></div></a>
@@ -127,6 +176,7 @@ def render_index(models, d, history, statuses, generated_at):
   <div class="metric"><span class="metric-label">This run</span><strong class="metric-value">{change_count}</strong><span class="metric-note">roster changes</span></div>
 </div>
 <blockquote><strong>Eligibility policy:</strong> listed prompt and completion pricing must be exactly $0. Zen exceptions are explicitly labelled. Source status: {esc(src_bits)}.</blockquote>
+{render_quick_start(models)}
 {change_html}
 <div class="card-grid">{cards}</div>
 <h2>Recent roster changes</h2>
@@ -153,6 +203,8 @@ def main():
         os.remove(stale_router_page)
     with open(os.path.join(OUT_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(render_index(models, d, S.load_history(), statuses, generated_at))
+    with open(os.path.join(OUT_DIR, "feed.xml"), "w", encoding="utf-8") as f:
+        f.write(render_feed(S.load_history(limit=20), generated_at))
     print(f"generated {len(models)} free models at {generated_at}")
     print("statuses:", {k: v["count"] for k, v in statuses.items()})
     print("diff:", d)

@@ -36,6 +36,46 @@ PAGES = [
     ("comparisons-free-models-ranking.html", "Free models", "list"),
 ]
 
+SITE_CONFIG = {
+    "site_url": "",  # Set the canonical site URL before publishing feed.xml.
+    "support_url": "",  # Optional GitHub Sponsors/Buy Me a Coffee URL.
+}
+
+PROVIDER_CONFIG = {
+    "openrouter": {
+        "label": "OpenRouter",
+        "url": "https://openrouter.ai/?ref=YOUR_REF_CODE",
+        "keys_url": "https://openrouter.ai/keys?ref=YOUR_REF_CODE",
+        "configured": False,
+    },
+    "nous": {
+        "label": "Nous Portal",
+        "url": "https://portal.nousresearch.com/?ref=YOUR_REF_CODE",
+        "keys_url": "https://inference.nousresearch.com/?ref=YOUR_REF_CODE",
+        "configured": False,
+    },
+    "opencode-zen": {
+        "label": "OpenCode Zen",
+        "url": "https://opencode.ai/zen?ref=YOUR_REF_CODE",
+        "keys_url": "https://opencode.ai/zen?ref=YOUR_REF_CODE",
+        "configured": False,
+    },
+}
+
+
+def external_link(label, url, sponsored=False):
+    rel = "noopener noreferrer sponsored" if sponsored else "noopener noreferrer"
+    return f'<a href="{esc(url)}" target="_blank" rel="{rel}">{esc(label)}</a>'
+
+
+def model_id(value, model_name=""):
+    value = str(value or "")
+    label = f"Copy model ID: {value}"
+    return (f'<span class="model-id-wrap"><code class="model-id">{esc(value)}</code>'
+            f'<button type="button" class="copy-button" data-copy-value="{esc(value)}" '
+            f'aria-label="{esc(label)}" title="Copy model ID"><span aria-hidden="true">Copy</span></button>'
+            f'</span>')
+
 
 def page(title, active, body, generated_at, extra_head=""):
     nav = []
@@ -56,6 +96,7 @@ def page(title, active, body, generated_at, extra_head=""):
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="alternate" type="application/rss+xml" title="Hermes Model Wiki — Model Changes" href="feed.xml">
 <style>{BASE_CSS}</style>
 {extra_head}
 </head>
@@ -81,7 +122,11 @@ def page(title, active, body, generated_at, extra_head=""):
 </header>
 <main class="main" role="main" id="main-content">
   {body}
-  <footer class="footer">Generated {fmt_ts(generated_at)} · Sources refresh daily · Paid proxy scores are labelled explicitly</footer>
+  <footer class="footer">
+    <div class="footer-links"><a href="feed.xml">Model changes feed</a><span class="footer-note">Support this project: configuration needed</span><span class="footer-note">GPU hosting recommendations: configuration needed</span></div>
+    <div>Generated {fmt_ts(generated_at)} · Sources refresh daily · Paid proxy scores are labelled explicitly</div>
+  </footer>
+  <div class="sr-only" aria-live="polite" data-copy-status></div>
 </main>
 <script>
 (function(){{
@@ -107,6 +152,22 @@ def page(title, active, body, generated_at, extra_head=""):
   document.addEventListener('keydown',function(event){{if(event.key==='Escape'&&open){{setOpen(false);toggle.focus()}}}});
   mobile.addEventListener('change',syncViewport);
   setOpen(false);
+  document.addEventListener('click',function(event){{
+    var button=event.target.closest('[data-copy-value]');
+    if(!button)return;
+    var value=button.getAttribute('data-copy-value');
+    var status=document.querySelector('[data-copy-status]');
+    function feedback(label,ok){{
+      button.textContent=label;
+      button.classList.toggle('copied',ok);
+      button.classList.toggle('copy-failed',!ok);
+      if(status)status.textContent=label+(ok?'':' — allow clipboard access or select the text manually');
+      window.setTimeout(function(){{button.textContent='Copy';button.classList.remove('copied','copy-failed')}},1500);
+    }}
+    if(navigator.clipboard&&navigator.clipboard.writeText){{
+      navigator.clipboard.writeText(value).then(function(){{feedback('Copied!',true)}},function(){{feedback('Copy failed',false)}});
+    }}else{{feedback('Copy failed',false)}}
+  }});
   document.querySelectorAll('[data-model-filter]').forEach(function(root){{
     var input=root.querySelector('[data-model-filter-input]');
     var role=root.querySelector('[data-model-filter-role]');
@@ -186,7 +247,7 @@ def model_rows(models, show_desc=True):
     for m in models:
         cells = [
             f'<span class="role-pill">{esc(m.get("role", "General purpose fallback"))}</span>',
-            f'<code class="model-id">{esc(m.get("display_id", m.get("id", "")))}</code>'
+            model_id(m.get("display_id", m.get("id", ""))),
             f'<span class="model-name">{esc(m.get("name", ""))}</span>',
             BADGES.get(m.get("free_basis"), ""),
             esc(" · ".join(m.get("sources", []))),

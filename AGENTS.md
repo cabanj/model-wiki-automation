@@ -6,7 +6,7 @@ This is a standard-library Python static-site generator for a free-model wiki, n
 
 - `sources/` fetches and merges OpenRouter, Nous Portal, and OpenCode Zen models.
 - `snapshot.py` persists `data/models.json` and `data/history.json` and computes additions/removals.
-- `gen.py` writes `dist/index.html` and `dist/comparisons-free-models-ranking.html`.
+- `gen.py` writes `dist/index.html`, `dist/comparisons-free-models-ranking.html`, and `dist/feed.xml`.
 - `bench.py` writes `dist/comparisons-benchmarks.html`, using Artificial Analysis live data when `AA_API_KEY` is set and `data/benchmarks-cache.json` otherwise.
 - `render.py` and `render/base.css` own the shared HTML shell and styling.
 - `analysis/` is historical reference material, not current generated output.
@@ -35,7 +35,7 @@ bash run.sh
 bash cron-model-wiki.sh
 ```
 
-`run.sh` requires Linux, `AA_API_KEY`, `sudo`, `/var/www/model-wiki`, and an HTTP server on `127.0.0.1:8080`. It deploys only the three active HTML files and removes the obsolete router changelog page. `cron-model-wiki.sh` performs `git pull --ff-only`, sources `/etc/model-wiki.env`, and expects an external cron schedule; it does not install a schedule or redirect logs despite its comment.
+`run.sh` requires Linux, `AA_API_KEY`, `sudo`, `/var/www/model-wiki`, and an HTTP server on `127.0.0.1:8080`. It deploys only the three active HTML files and `feed.xml`, and removes the obsolete router changelog page. `cron-model-wiki.sh` performs `git pull --ff-only`, sources `/etc/model-wiki.env`, and expects an external cron schedule; it does not install a schedule or redirect logs despite its comment.
 
 There is no dependency manifest, lockfile, CI configuration, or configured lint, formatter, typecheck, or source-codegen command.
 

@@ -27,3 +27,7 @@ FEED_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/feed.xm
 echo "smoke test http://127.0.0.1:8080/index.html -> $CODE; feed.xml -> $FEED_CODE"
 [ "$CODE" = "200" ] && [ "$FEED_CODE" = "200" ] || { echo "DEPLOY FAILED"; exit 1; }
 echo "deployed OK at $STAMP"
+
+# publish the public free-llm-roster README (no-op until its checkout exists);
+# never fatal to site generation, so it runs after the smoke test
+bash publish-readme.sh

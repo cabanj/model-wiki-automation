@@ -14,6 +14,7 @@ from sources import collect_all
 from sources.common import is_junk
 import snapshot as S
 import render
+import legal
 from render import esc, fmt_ts, model_row_attrs, model_rows, page, site_url, table
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
@@ -224,6 +225,10 @@ def main():
         os.remove(stale_router_page)
     with open(os.path.join(OUT_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(render_index(models, d, S.load_history(), statuses, generated_at))
+    with open(os.path.join(OUT_DIR, "privacy.html"), "w", encoding="utf-8") as f:
+        f.write(legal.render_privacy(generated_at))
+    with open(os.path.join(OUT_DIR, "contact.html"), "w", encoding="utf-8") as f:
+        f.write(legal.render_contact(generated_at))
     with open(os.path.join(OUT_DIR, "feed.xml"), "w", encoding="utf-8") as f:
         f.write(render_feed(S.load_history(limit=20), generated_at))
     print(f"generated {len(models)} free models at {generated_at}")

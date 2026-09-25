@@ -108,6 +108,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   padding-bottom:var(--space-2);border-bottom:1px solid var(--border);letter-spacing:-.01em}
 .page-body h3{font-size:1.1rem;font-weight:600;margin-top:var(--space-6);margin-bottom:var(--space-2)}
 .page-body strong{font-weight:600}
+.page-body>p{max-width:76ch;line-height:1.7;color:var(--text-dim)}
+.page-body>ul{max-width:76ch;line-height:1.7;color:var(--text-dim);padding-left:1.15rem}
+.page-body>ul li{margin-bottom:var(--space-2)}
 .page-body code:not(pre code){font-family:var(--mono);font-size:.85em;background:var(--bg-raised);
   padding:.15em .45em;border-radius:4px;border:1px solid var(--border);color:var(--accent)}
 .page-body blockquote{border-left:3px solid var(--accent);background:var(--accent-weak);

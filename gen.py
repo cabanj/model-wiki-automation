@@ -60,7 +60,7 @@ def render_ranking(models, generated_at):
         f'<option value="{esc(role)}">{esc(role)}</option>' for role, _ in groups)
     sections = []
     for role, group_models in groups:
-        headers = ["Use case", "Model", "Eligibility", "Sources", "Context", "Modalities", "Description"]
+        headers = ["Use case", "Model", "Model name", "Eligibility", "Sources", "Context", "Modalities", "Description"]
         sections.append(
             f'<section class="model-group" data-model-group><div class="model-group-head">'
             f'<h2 id="{ROLE_IDS[role]}">{esc(role)}</h2><span>{len(group_models)} models</span></div>'
@@ -172,12 +172,12 @@ def render_index(models, d, history, statuses, generated_at):
                          caption="Recent model roster changes", row_header=0) if hist_rows else '<div class="empty-state">No roster changes recorded yet.</div>'
     body = f'''<div class="page-body">
 <section class="hero">
-  <span class="eyebrow">Hermes Agent · live model intelligence</span>
+  <span class="eyebrow">LLM Roster · live model intelligence</span>
   <h1>Choose the right free model with confidence.</h1>
   <p class="lead">A continuously refreshed inventory of genuinely free models across configured providers, with benchmark comparisons to guide your choice.</p>
   <p class="src-note">Last updated: <strong>{fmt_ts(generated_at)}</strong></p>
 </section>
-<div class="metric-strip" aria-label="Current model wiki summary">
+<div class="metric-strip" aria-label="Current model roster summary">
   <div class="metric"><span class="metric-label">Free roster</span><strong class="metric-value">{n}</strong><span class="metric-note">models currently confirmed</span></div>
   <div class="metric"><span class="metric-label">Sources</span><strong class="metric-value">{source_count}</strong><span class="metric-note">statuses checked this run</span></div>
   <div class="metric"><span class="metric-label">This run</span><strong class="metric-value">{change_count}</strong><span class="metric-note">roster changes</span></div>

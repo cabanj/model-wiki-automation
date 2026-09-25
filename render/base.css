@@ -146,13 +146,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .table-wrap tbody tr:last-child td,.table-wrap tbody tr:last-child th{border-bottom:none}
 .table-wrap td:first-child,.table-wrap th:first-child{white-space:nowrap}
 .model-table table{min-width:1020px;table-layout:fixed}
-.model-table th:nth-child(1),.model-table td:nth-child(1){width:13%}
+.model-table th:nth-child(1),.model-table td:nth-child(1){width:11%}
 .model-table th:nth-child(2),.model-table td:nth-child(2){width:18%}
-.model-table th:nth-child(3),.model-table td:nth-child(3){width:12%}
-.model-table th:nth-child(4),.model-table td:nth-child(4){width:12%}
-.model-table th:nth-child(5),.model-table td:nth-child(5){width:8%}
-.model-table th:nth-child(6),.model-table td:nth-child(6){width:10%}
-.model-table th:nth-child(7),.model-table td:nth-child(7){width:27%}
+.model-table th:nth-child(3),.model-table td:nth-child(3){width:15%}
+.model-table th:nth-child(4),.model-table td:nth-child(4){width:11%}
+.model-table th:nth-child(5),.model-table td:nth-child(5){width:10%}
+.model-table th:nth-child(6),.model-table td:nth-child(6){width:8%}
+.model-table th:nth-child(7),.model-table td:nth-child(7){width:10%}
+.model-table th:nth-child(8),.model-table td:nth-child(8){width:17%}
 .model-id-wrap{display:flex;align-items:flex-start;gap:6px;min-width:0}
 .model-id{display:block;white-space:normal;overflow-wrap:anywhere;color:var(--accent);font-size:.8rem}
 .copy-button{flex:0 0 auto;border:1px solid var(--border);background:var(--bg-raised);color:var(--text-dim);

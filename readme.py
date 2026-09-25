@@ -153,6 +153,20 @@ def extract_previous_extra(existing_text):
     return match.group(1).replace(EXTRA_OPEN, "").strip()
 
 
+def verified_stamp(history, generated):
+    """Date of the last roster change, not of this run.
+
+    A daily bot that stamps wall-clock time rewrites the file on every run and
+    fills the history with timestamp-only commits. Anchor the stamp to the last
+    snapshot that actually added or removed a model, so an unchanged roster
+    renders byte-identical and produces no commit.
+    """
+    for entry in reversed(history or []):
+        if entry.get("added") or entry.get("removed"):
+            return entry.get("at") or generated
+    return generated
+
+
 def build(models_doc, history, extra, template):
     models = [dict(m, role=assign_role(m)) for m in models_doc.get("models", [])]
     generated = models_doc.get("generated_at", "")
@@ -161,12 +175,13 @@ def build(models_doc, history, extra, template):
     # shrink the number the README advertises.
     live_sources = {s for m in models for s in m.get("sources", [])}
     source_count = len(live_sources)
+    verified = verified_stamp(history, generated)
 
     values = {
         "{{MODEL_COUNT}}": str(len(models)),
         "{{SOURCE_COUNT}}": str(source_count),
-        "{{DATE_SHORT}}": (generated or "")[:10] or "n/a",
-        "{{GENERATED_HUMAN}}": human_stamp(generated),
+        "{{DATE_SHORT}}": (verified or "")[:10] or "n/a",
+        "{{GENERATED_HUMAN}}": human_stamp(verified),
         "{{TABLE}}": render_table(models),
         "{{SOURCES}}": render_sources(models),
         "{{CHANGES}}": render_changes(history),

@@ -22,6 +22,12 @@ def test_model_directory_has_search_and_use_case_metadata():
     assert 'Free models for Long-context work' in html
 
 
+def test_router_changes_page_is_not_exposed():
+    html = render.page("Home", "index.html", "<p>Home</p>", "2026-01-01T00:00:00Z")
+    assert "comparisons-router-changelog.html" not in html
+    assert "Router changes" not in html
+
+
 def test_benchmark_render_has_summary_and_paid_reference(monkeypatch):
     model = {"id": "vendor/longcat-model", "display_id": "vendor/longcat-model:free", "modalities": "text"}
     aa = [{"name": "Longcat Model", "artificial_analysis_intelligence_index": 20,

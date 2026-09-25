@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Generate the free-model directory and static wiki pages."""
 
-import json
 import os
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -90,82 +88,6 @@ def render_ranking(models, generated_at):
     return page("Free models by use case", "comparisons-free-models-ranking.html", body, generated_at)
 
 
-ROUTER_CHANGELOG_PATH = "/opt/hermes-router/data/changelog.json"
-
-ALIAS_LABELS = {
-    "free-general": "General",
-    "free-fast": "Fast",
-    "free-coding": "Coding",
-    "free-fallback": "Fallback",
-}
-
-
-def load_router_changelog():
-    try:
-        with open(ROUTER_CHANGELOG_PATH) as f:
-            return json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return []
-
-
-def _fmt_models(ids):
-    if not ids:
-        return "—"
-    return "<br>".join(f"<code>{esc(i)}</code>" for i in ids)
-
-
-def render_router_changelog(history, generated_at):
-    if not history:
-        body = '<div class="page-body"><section class="page-head"><span class="eyebrow">Router audit</span><h1>Router model-chain changes</h1><p class="lead">No router changes have been recorded yet. The audit run writes here after every config apply.</p></section></div>'
-        return page("Router model-chain changes", "comparisons-router-changelog.html", body, generated_at)
-
-    latest = history[-1]
-    cur_by_alias = {}
-    for change in latest.get("changes", []):
-        cur_by_alias[change["alias"]] = change["new"]
-
-    chain_rows = []
-    for alias in ["free-general", "free-fast", "free-coding", "free-fallback"]:
-        ids = cur_by_alias.get(alias, [])
-        chain_rows.append([
-            f"<strong>{esc(ALIAS_LABELS.get(alias, alias))}</strong>",
-            _fmt_models(ids),
-            str(len(ids)),
-        ])
-    chains_html = table(["Alias", "Chain priority order", "Models"], chain_rows,
-                        caption="Current router chains", row_header=0)
-
-    history_rows = []
-    for entry in reversed(history):
-        ts = entry.get("at", "")
-        try:
-            when = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().strftime("%Y-%m-%d %H:%M")
-        except Exception:
-            when = ts[:16]
-        for change in entry.get("changes", []):
-            history_rows.append([
-                f"<code>{esc(when)}</code>",
-                f"<strong>{esc(ALIAS_LABELS.get(change['alias'], change['alias']))}</strong>",
-                _fmt_models(change.get("old", [])),
-                _fmt_models(change.get("new", [])),
-            ])
-    history_html = table(["When", "Alias", "Was", "Now"], history_rows,
-                         cls="history-table", caption="Router chain history", row_header=1)
-
-    body = f'''<div class="page-body">
-<section class="page-head">
-  <span class="eyebrow">Router audit · last recorded state</span>
-  <h1>Router model-chain changes</h1>
-  <p class="lead">The daily Hermes audit compares OpenRouter, Nous Portal, and OpenCode Zen, re-ranks each alias chain, applies the new configuration, and records the result only after a successful smoke test.</p>
-</section>
-<h2 id="current-chains">Current chains</h2>
-{chains_html}
-<h2 id="change-history">Change history</h2>
-{history_html}
-</div>'''
-    return page("Router model-chain changes", "comparisons-router-changelog.html", body, generated_at)
-
-
 def render_index(models, d, history, statuses, generated_at):
     n = len(models)
     source_count = len(statuses)
@@ -189,15 +111,14 @@ def render_index(models, d, history, statuses, generated_at):
         for h in hist_sorted[:5]]
     cards = f'''
 <a class="card" href="comparisons-free-models-ranking.html"><span class="card-kicker">Directory</span><h3>Find a free model</h3><p>Filter the current roster by use case, model ID, source, modality, or capability.</p><div class="card-meta"><span>{n} models</span><span class="card-arrow">→</span></div></a>
-<a class="card" href="comparisons-benchmarks.html"><span class="card-kicker">Decision guide</span><h3>Compare benchmark leaders</h3><p>Start with the best free model for everyday work, research, coding, and vision.</p><div class="card-meta"><span>AA benchmarks</span><span class="card-arrow">→</span></div></a>
-<a class="card" href="comparisons-router-changelog.html"><span class="card-kicker">Operations</span><h3>See router changes</h3><p>Track the model chain applied to each Hermes routing alias over time.</p><div class="card-meta"><span>Audit history</span><span class="card-arrow">→</span></div></a>'''
+<a class="card" href="comparisons-benchmarks.html"><span class="card-kicker">Decision guide</span><h3>Compare benchmark leaders</h3><p>Start with the best free model for everyday work, research, coding, and vision.</p><div class="card-meta"><span>AA benchmarks</span><span class="card-arrow">→</span></div></a>'''
     history_html = table(["When", "Added", "Removed"], hist_rows,
                          caption="Recent model roster changes", row_header=0) if hist_rows else '<div class="empty-state">No roster changes recorded yet.</div>'
     body = f'''<div class="page-body">
 <section class="hero">
   <span class="eyebrow">Hermes Agent · live model intelligence</span>
   <h1>Choose the right free model with confidence.</h1>
-  <p class="lead">A continuously refreshed inventory of genuinely free models across configured providers, with benchmark comparisons and the router changes that shape production behavior.</p>
+  <p class="lead">A continuously refreshed inventory of genuinely free models across configured providers, with benchmark comparisons to guide your choice.</p>
   <p class="src-note">Last updated: <strong>{fmt_ts(generated_at)}</strong></p>
 </section>
 <div class="metric-strip" aria-label="Current model wiki summary">
@@ -227,8 +148,9 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(os.path.join(OUT_DIR, "comparisons-free-models-ranking.html"), "w", encoding="utf-8") as f:
         f.write(render_ranking(models, generated_at))
-    with open(os.path.join(OUT_DIR, "comparisons-router-changelog.html"), "w", encoding="utf-8") as f:
-        f.write(render_router_changelog(load_router_changelog(), generated_at))
+    stale_router_page = os.path.join(OUT_DIR, "comparisons-router-changelog.html")
+    if os.path.exists(stale_router_page):
+        os.remove(stale_router_page)
     with open(os.path.join(OUT_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(render_index(models, d, S.load_history(), statuses, generated_at))
     print(f"generated {len(models)} free models at {generated_at}")

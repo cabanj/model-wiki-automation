@@ -14,7 +14,7 @@ from sources import collect_all
 from sources.common import is_junk
 import snapshot as S
 import render
-from render import esc, fmt_ts, model_row_attrs, model_rows, page, table
+from render import esc, fmt_ts, model_row_attrs, model_rows, page, site_url, table
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
 
@@ -99,12 +99,19 @@ def render_feed(history, generated_at):
             return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
         except Exception:
             return ts
+    ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
     root = ET.Element("rss", {"version": "2.0"})
     channel = ET.SubElement(root, "channel")
-    for tag, value in (("title", "Hermes Model Wiki — Model Changes"),
-                       ("link", "index.html"), ("description", "Recent additions and removals from the free model roster."),
+    base = site_url()
+    for tag, value in (("title", "llmroster.dev — Model Changes"),
+                       ("link", base or "index.html"),
+                       ("description", "Recent additions and removals from the free model roster."),
                        ("lastBuildDate", rfc822(generated_at))):
         ET.SubElement(channel, tag).text = value
+    feed_url = site_url("feed.xml")
+    if base and feed_url:
+        ET.SubElement(channel, "{http://www.w3.org/2005/Atom}link", {
+            "href": feed_url, "rel": "self", "type": "application/rss+xml"})
     for change in sorted(history or [], key=lambda h: h.get("at", ""), reverse=True)[:20]:
         added = change.get("added", [])
         removed = change.get("removed", [])

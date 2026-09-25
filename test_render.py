@@ -77,7 +77,22 @@ def test_external_link_and_configuration_placeholders():
     assert 'target="_blank"' in html
     assert set(render.PROVIDER_CONFIG) == {'openrouter', 'nous', 'opencode-zen'}
     assert render.SITE_CONFIG['support_url'] == ''
-    assert render.SITE_CONFIG['site_url'] == ''
+    assert render.SITE_CONFIG['site_url'] == 'https://llmroster.dev'
+
+
+def test_site_url_builds_absolute_paths():
+    assert render.site_url() == 'https://llmroster.dev'
+    assert render.site_url('feed.xml') == 'https://llmroster.dev/feed.xml'
+    assert render.site_url('/feed.xml') == 'https://llmroster.dev/feed.xml'
+
+
+def test_meta_tags_are_absolute_and_site_scoped():
+    html = render.page('Home', 'index.html', '<p>Home</p>', '2026-01-01T00:00:00Z')
+    assert '<link rel="canonical" href="https://llmroster.dev">' in html
+    assert '<meta property="og:url" content="https://llmroster.dev">' in html
+    assert 'content="llmroster.dev"' in html
+    assert 'href="https://llmroster.dev/feed.xml"' in html
+    assert 'href="feed.xml"' not in html.split('</head>', 1)[0]
 
 
 def test_footer_and_feed_head_links_are_present():
@@ -109,7 +124,9 @@ def test_rss_feed_is_valid_and_limited_to_twenty_newest_events():
     assert len(items) == 20
     assert 'model-22<x>' in items[0].findtext('description')
     assert items[0].findtext('guid').startswith('urn:model-wiki:change:')
-    assert channel.findtext('link') == 'index.html'
+    assert channel.findtext('link') == 'https://llmroster.dev'
+    self_link = channel.find('{http://www.w3.org/2005/Atom}link')
+    assert self_link is not None and self_link.attrib['href'] == 'https://llmroster.dev/feed.xml'
 
 
 def test_rss_feed_is_valid_when_history_is_empty():

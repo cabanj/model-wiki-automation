@@ -119,11 +119,12 @@ def page(title, active, body, generated_at, extra_head=""):
   </button>
   <a class="htitle" href="index.html">Hermes Model Wiki</a>
   <div class="header-meta"><span>Model intelligence</span><time datetime="{esc(generated_at)}">{fmt_ts(generated_at)}</time></div>
+  <div class="header-links"><a href="https://ko-fi.com/jacekcaban" target="_blank" rel="noopener noreferrer">Support</a><span class="header-link-label">GPU compute: <a href="https://runpod.io?ref=zkpkr4fe" target="_blank" rel="noopener noreferrer sponsored">RunPod</a></span></div>
 </header>
 <main class="main" role="main" id="main-content">
   {body}
   <footer class="footer">
-    <div class="footer-links"><a href="feed.xml">Model changes feed</a><span class="footer-note">Support this project: configuration needed</span><span class="footer-note">GPU hosting recommendations: configuration needed</span></div>
+    <div class="footer-links"><a href="feed.xml">Model changes feed</a></div>
     <div>Generated {fmt_ts(generated_at)} · Sources refresh daily · Paid proxy scores are labelled explicitly</div>
   </footer>
   <div class="sr-only" aria-live="polite" data-copy-status></div>

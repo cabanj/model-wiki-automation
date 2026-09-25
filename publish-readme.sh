@@ -15,6 +15,13 @@ python3 readme.py "$ROSTER_DIR" || { echo "readme: render failed, skipping"; exi
 [ -d "$ROSTER_DIR/.git" ] || { echo "readme: no checkout at $ROSTER_DIR, skipping commit"; exit 0; }
 cd "$ROSTER_DIR" || { echo "readme: cannot enter $ROSTER_DIR"; exit 0; }
 
+# A plain clone points origin at an https URL and defines no `github-roster`
+# remote, so `git push github-roster` fails. The deploy key is an SSH identity
+# bound to that host alias, so the publish remote must be SSH.
+if ! git remote get-url "$ROSTER_REMOTE" >/dev/null 2>&1; then
+  git remote add "$ROSTER_REMOTE" "git@${ROSTER_REMOTE}:cabanj/free-llm-roster.git"
+fi
+
 git add README.md || { echo "readme: git add failed"; exit 0; }
 if ! git diff --cached --quiet; then
   git -c user.name="model-wiki-bot" -c user.email="bot@llmroster.dev" \

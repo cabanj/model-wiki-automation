@@ -38,8 +38,23 @@ PAGES = [
 
 SITE_CONFIG = {
     "site_url": "https://llmroster.dev",  # Canonical site URL; drives canonical/og:url/RSS links.
-    "support_url": "",  # Optional GitHub Sponsors/Buy Me a Coffee URL.
+    "support_url": "https://ko-fi.com/jacekcaban",  # Optional GitHub Sponsors/Buy Me a Coffee URL.
+    "support_label": "Support",
+    "support_blurb": "Free to run, no ads. If it saved you money, consider a tip.",
 }
+
+
+def support_link():
+    """Sidebar support link, or '' when support_url is unset."""
+    if not SITE_CONFIG["support_url"]:
+        return ""
+    url = SITE_CONFIG["support_url"]
+    label = SITE_CONFIG["support_label"]
+    return (f'<a class="support-link" href="{esc(url)}" target="_blank" rel="noopener noreferrer">'
+            f'<span class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" '
+            f'stroke="currentColor" stroke-width="1.7" width="18" height="18">'
+            f'<path d="M12 21s-7-4.5-9-8.5A5 5 0 0 1 12 6a5 5 0 0 1 9 6.5C19 16.5 12 21 12 21z"/></svg></span>'
+            f'<span class="nav-title">{esc(label)}</span></a>')
 
 
 def site_url(path=""):
@@ -133,6 +148,10 @@ def page(title, active, body, generated_at, extra_head=""):
     <div class="nav-section">Explore</div>
     {''.join(nav)}
   </nav>
+  <div class="sidebar-support">
+    {support_link()}
+    <p class="support-blurb">{esc(SITE_CONFIG['support_blurb'])}</p>
+  </div>
 </aside>
 <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
 <header class="header" role="banner">
@@ -141,7 +160,7 @@ def page(title, active, body, generated_at, extra_head=""):
   </button>
   <a class="htitle" href="index.html">LLM Roster</a>
   <div class="header-meta"><span>Model intelligence</span><time datetime="{esc(generated_at)}">{fmt_ts(generated_at)}</time></div>
-  <div class="header-links"><a href="https://ko-fi.com/jacekcaban" target="_blank" rel="noopener noreferrer">Support</a><span class="header-link-label">GPU compute: <a href="https://runpod.io?ref=zkpkr4fe" target="_blank" rel="noopener noreferrer sponsored">RunPod</a></span></div>
+  <div class="header-links"><span class="header-link-label"><a href="https://runpod.io?ref=zkpkr4fe" target="_blank" rel="noopener noreferrer sponsored">RunPod</a> &mdash; affiliate link</span></div>
 </header>
 <main class="main" role="main" id="main-content">
   {body}

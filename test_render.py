@@ -85,8 +85,15 @@ def test_footer_and_feed_head_links_are_present():
     assert 'application/rss+xml' in html
     assert 'href="feed.xml"' in html
     assert 'Model changes feed' in html
-    assert 'Support' in html
-    assert 'GPU hosting recommendations' in html
+    assert '>Support</a>' in html
+    assert 'href="https://ko-fi.com/jacekcaban"' in html
+    assert 'GPU compute: <a href="https://runpod.io?ref=zkpkr4fe"' in html
+    assert 'rel="noopener noreferrer sponsored">RunPod</a>' in html
+    assert '<header class="header" role="banner">' in html
+    assert 'header-links' in html
+    assert html.index('header-links') < html.index('</header>')
+    assert 'footer-links' in html
+    assert 'GPU compute: <a' not in html.split('<footer class="footer">', 1)[1].split('</footer>', 1)[0]
     assert 'Generated 2026-01-01 01:00' in html
 
 

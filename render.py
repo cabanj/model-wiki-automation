@@ -37,9 +37,31 @@ PAGES = [
 ]
 
 SITE_CONFIG = {
-    "site_url": "",  # Set the canonical site URL before publishing feed.xml.
+    "site_url": "https://llmroster.dev",  # Canonical site URL; drives canonical/og:url/RSS links.
     "support_url": "",  # Optional GitHub Sponsors/Buy Me a Coffee URL.
 }
+
+
+def site_url(path=""):
+    """Absolute URL for a site-relative path, or "" when site_url is unset."""
+    base = SITE_CONFIG["site_url"].rstrip("/")
+    if not base:
+        return ""
+    return f"{base}/{path.lstrip('/')}" if path else base
+
+
+def meta_tags():
+    """Canonical link, Open Graph URL and absolute RSS alternate, or '' when unconfigured."""
+    base = site_url()
+    if not base:
+        return ""
+    return (
+        f'<link rel="canonical" href="{esc(base)}">'
+        f'<meta property="og:url" content="{esc(base)}">'
+        f'<meta property="og:site_name" content="llmroster.dev">'
+        f'<link rel="alternate" type="application/rss+xml" '
+        f'title="Hermes Model Wiki — Model Changes" href="{esc(site_url("feed.xml"))}">'
+    )
 
 PROVIDER_CONFIG = {
     "openrouter": {
@@ -96,7 +118,7 @@ def page(title, active, body, generated_at, extra_head=""):
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="alternate" type="application/rss+xml" title="Hermes Model Wiki — Model Changes" href="feed.xml">
+{meta_tags()}
 <style>{BASE_CSS}</style>
 {extra_head}
 </head>

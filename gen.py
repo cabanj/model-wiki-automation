@@ -216,6 +216,11 @@ def main():
     print("statuses:", {k: v["count"] for k, v in statuses.items()})
     print("diff:", d)
 
+    if d["added"] or d["removed"]:
+        import x_publisher
+        print("ready-to-paste post:")
+        print(x_publisher.format_message(d["added"], d["removed"]))
+
 
 if __name__ == "__main__":
     main()

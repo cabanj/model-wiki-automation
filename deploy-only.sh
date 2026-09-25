@@ -17,7 +17,7 @@ python3 bench.py --use-cache
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 sudo cp -r /var/www/model-wiki "/var/www/model-wiki.bak-$STAMP"
 sudo find /var/www/model-wiki -name '*.bak-*' -maxdepth 1 -mtime +14 -exec rm -rf {} + 2>/dev/null || true
-sudo cp dist/index.html dist/comparisons-free-models-ranking.html dist/comparisons-benchmarks.html dist/feed.xml /var/www/model-wiki/
+sudo cp dist/index.html dist/comparisons-free-models-ranking.html dist/comparisons-benchmarks.html dist/feed.xml dist/privacy.html dist/contact.html /var/www/model-wiki/
 sudo rm -f /var/www/model-wiki/comparisons-router-changelog.html
 
 sleep 1

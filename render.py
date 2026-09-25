@@ -165,7 +165,7 @@ def page(title, active, body, generated_at, extra_head=""):
 <main class="main" role="main" id="main-content">
   {body}
   <footer class="footer">
-    <div class="footer-links"><a href="feed.xml">Model changes feed</a></div>
+    <div class="footer-links"><a href="feed.xml">Model changes feed</a><a href="privacy.html">Privacy</a><a href="contact.html">Contact</a></div>
     <div>Generated {fmt_ts(generated_at)} · Sources refresh daily · Paid proxy scores are labelled explicitly</div>
   </footer>
   <div class="sr-only" aria-live="polite" data-copy-status></div>

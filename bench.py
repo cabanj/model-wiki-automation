@@ -182,15 +182,22 @@ def score_cell(value, field, model=None, entry=None, best=False):
     return f'<span class="score-cell">{fmt_score(value, field)}{mark}{star}</span>{label}'
 
 
-def render(models, generated_at):
-    aa_data, error = fetch_aa()
-    from_cache = False
+def render(models, generated_at, use_cache=False):
+    if use_cache:
+        # Explicit cache reuse (deploy-only.sh): the merge changed code, not data.
+        aa_data, error = load_cached(), ""
+        from_cache = bool(aa_data)
+    else:
+        aa_data, error = fetch_aa()
+        from_cache = False
     if aa_data is None:
         aa_data = load_cached()
         from_cache = bool(aa_data)
     matched = match_free(models, aa_data)
 
-    if error and from_cache:
+    if use_cache and from_cache:
+        source_note = "Cached Artificial Analysis data (republished without a live fetch)"
+    elif error and from_cache:
         source_note = "Cached benchmark data; live fetch unavailable"
     elif error:
         source_note = "Benchmark data unavailable; no cached result was found"
@@ -282,12 +289,13 @@ def render(models, generated_at):
 
 
 def main():
+    use_cache = "--use-cache" in sys.argv[1:]
     snap = load_snapshot()
     models = snap["models"] if snap else []
     generated_at = snap["generated_at"] if snap else ""
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
-        f.write(render(models, generated_at))
+        f.write(render(models, generated_at, use_cache=use_cache))
     print(f"benchmarks written ({len(models)} roster models)")
 
 

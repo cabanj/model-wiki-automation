@@ -60,7 +60,7 @@ def meta_tags():
         f'<meta property="og:url" content="{esc(base)}">'
         f'<meta property="og:site_name" content="llmroster.dev">'
         f'<link rel="alternate" type="application/rss+xml" '
-        f'title="Hermes Model Wiki — Model Changes" href="{esc(site_url("feed.xml"))}">'
+        f'title="LLM Roster — Model Changes" href="{esc(site_url("feed.xml"))}">'
     )
 
 PROVIDER_CONFIG = {
@@ -113,8 +113,8 @@ def page(title, active, body, generated_at, extra_head=""):
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{esc(title)} — Hermes Model Wiki</title>
-<meta name="description" content="Free-tier AI model knowledge base — benchmarks, rankings, and config guides for Hermes Agent">
+<title>{esc(title)} — LLM Roster</title>
+<meta name="description" content="Free-tier AI model directory — benchmarks, rankings, and practical model insights">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -127,9 +127,9 @@ def page(title, active, body, generated_at, extra_head=""):
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-brand"><a href="index.html">
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-    <span>Hermes Wiki</span></a>
+    <span>LLM Roster</span></a>
   </div>
-  <nav class="sidebar-nav" aria-label="Wiki pages">
+  <nav class="sidebar-nav" aria-label="LLM Roster pages">
     <div class="nav-section">Explore</div>
     {''.join(nav)}
   </nav>
@@ -139,7 +139,7 @@ def page(title, active, body, generated_at, extra_head=""):
   <button class="nav-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
-  <a class="htitle" href="index.html">Hermes Model Wiki</a>
+  <a class="htitle" href="index.html">LLM Roster</a>
   <div class="header-meta"><span>Model intelligence</span><time datetime="{esc(generated_at)}">{fmt_ts(generated_at)}</time></div>
   <div class="header-links"><a href="https://ko-fi.com/jacekcaban" target="_blank" rel="noopener noreferrer">Support</a><span class="header-link-label">GPU compute: <a href="https://runpod.io?ref=zkpkr4fe" target="_blank" rel="noopener noreferrer sponsored">RunPod</a></span></div>
 </header>

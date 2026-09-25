@@ -23,6 +23,16 @@ def test_model_directory_has_search_and_use_case_metadata():
     assert 'Free models for Long-context work' in html
 
 
+def test_model_directory_columns_match_model_row_cells():
+    model = make_model("vendor/longcat-model:free", name="Longcat Model", description="Long context model", source="openrouter")
+    html = gen.render_ranking([model], "2026-01-01T00:00:00Z")
+    table_start = html.index('<div class="table-wrap model-table">')
+    table_end = html.index('</table>', table_start)
+    table_html = html[table_start:table_end]
+    assert table_html.count('<th scope="col">') == 8
+    assert table_html.count('<td') + table_html.count('<th scope="row"') == 8
+
+
 def test_router_changes_page_is_not_exposed():
     html = render.page("Home", "index.html", "<p>Home</p>", "2026-01-01T00:00:00Z")
     assert "comparisons-router-changelog.html" not in html
@@ -101,6 +111,9 @@ def test_footer_and_feed_head_links_are_present():
     assert 'href="feed.xml"' in html
     assert 'Model changes feed' in html
     assert '>Support</a>' in html
+    assert 'LLM Roster' in html
+    assert 'Hermes Model Wiki' not in html
+    assert 'Hermes Wiki' not in html
     assert 'href="https://ko-fi.com/jacekcaban"' in html
     assert 'GPU compute: <a href="https://runpod.io?ref=zkpkr4fe"' in html
     assert 'rel="noopener noreferrer sponsored">RunPod</a>' in html

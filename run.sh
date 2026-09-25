@@ -3,6 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Shared with deploy-only.sh so a merge-triggered republish never runs alongside
+# the daily cron build; the second process blocks here until the first exits.
+exec 9>/run/lock/model-wiki.lock
+flock 9
+
 export AA_API_KEY="${AA_API_KEY:?AA_API_KEY must be set (see /etc/model-wiki.env)}"
 
 python3 gen.py

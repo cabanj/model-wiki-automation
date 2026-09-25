@@ -1,0 +1,59 @@
+name: Deploy to VPS
+
+# Merge to main republishes the site with the new code but the EXISTING data.
+# The daily cron (0 18 * * * UTC) still owns source fetching and benchmark
+# refresh, so a merge must not touch data/models.json or data/history.json.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-model-wiki
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Republish on VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DEPLOY_HOST: ${{ secrets.VPS_HOST }}
+      DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_APP_DIR: /opt/model-wiki-automation
+    steps:
+      - name: Check required secrets
+        run: |
+          [ -n "$DEPLOY_HOST" ] || { echo "::error::VPS_HOST secret is not set"; exit 1; }
+          [ -n "$DEPLOY_KEY" ] || { echo "::error::VPS_SSH_KEY secret is not set"; exit 1; }
+
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pin the host key instead of disabling the check; a swapped key must
+          # fail the deploy, not silently accept a different host.
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          echo "Host fingerprint this run trusted:"
+          ssh-keygen -lf ~/.ssh/known_hosts
+
+      - name: Republish
+        run: |
+          # `bash <script>` rather than ./script: git does not track the +x bit,
+          # so a fresh clone/reset can land the file non-executable.
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "root@$DEPLOY_HOST" \
+            "cd $VPS_APP_DIR && git pull --ff-only --quiet && bash ./deploy-only.sh"
+
+      - name: Verify site responds
+        run: |
+          for path in index.html comparisons-benchmarks.html comparisons-free-models-ranking.html feed.xml; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://$DEPLOY_HOST:8080/$path")
+            echo "$path -> $code"
+            [ "$code" = "200" ] || { echo "::error::$path returned $code"; exit 1; }
+          done

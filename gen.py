@@ -193,14 +193,28 @@ def render_index(models, d, history, statuses, generated_at):
 
 
 def main():
-    merged, statuses = collect_all()
-    models = [m for m in merged if m["free_basis"] in ("price-0", "zen-free", "zen-micro")
-              and not is_junk(m)]
-    old = S.load_snapshot()
-    d = S.diff(old["models"] if old else [], models)
+    from_snapshot = "--from-snapshot" in sys.argv[1:]
+    if from_snapshot:
+        # Rebuild pages from the last persisted roster: no source fetch, no snapshot
+        # write, no history append. Used by deploy-only.sh so a merge to main
+        # republishes with new render code but unchanged data.
+        old = S.load_snapshot()
+        if not old:
+            raise SystemExit("--from-snapshot: no data/models.json snapshot to rebuild from")
+        merged, statuses = old["models"], old.get("statuses", {})
+        models = [m for m in merged if m["free_basis"] in ("price-0", "zen-free", "zen-micro")
+                  and not is_junk(m)]
+        d = {"added": [], "removed": [], "unchanged_count": len(models)}
+    else:
+        merged, statuses = collect_all()
+        models = [m for m in merged if m["free_basis"] in ("price-0", "zen-free", "zen-micro")
+                  and not is_junk(m)]
+        old = S.load_snapshot()
+        d = S.diff(old["models"] if old else [], models)
     generated_at = S._now()
-    S.save_snapshot(models, statuses)
-    S.append_history(d)
+    if not from_snapshot:
+        S.save_snapshot(models, statuses)
+        S.append_history(d)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(os.path.join(OUT_DIR, "comparisons-free-models-ranking.html"), "w", encoding="utf-8") as f:

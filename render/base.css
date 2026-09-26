@@ -84,13 +84,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   line-height:1.5;color:var(--muted)}
 
 .header{grid-area:header;background:var(--bg-elev);border-bottom:1px solid var(--border);
-  padding:0 var(--space-6);display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:50}
-.header .htitle{font-size:1.05rem;font-weight:700;letter-spacing:-.01em;color:var(--accent);text-decoration:none}
-.header-meta{display:flex;align-items:center;gap:var(--space-4);font-size:.75rem;color:var(--muted)}
+  padding:0 var(--space-6);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+  gap:var(--space-4);position:sticky;top:0;z-index:50}
+/* Grid, not flex+space-between: the title and the right-hand group differ in width, so
+   space-between cannot put .header-meta at the true centre. The 1fr/auto/1fr track set
+   does. The nav toggle is display:none here, so .header-start collapses to just the title
+   and the left track still measures against the right one. */
+.header-start{display:flex;align-items:center;gap:var(--space-3);justify-self:start;min-width:0}
+.header .htitle{justify-self:start;font-size:1.05rem;font-weight:700;letter-spacing:-.01em;color:var(--accent);text-decoration:none}
+.header-meta{display:flex;align-items:center;justify-self:center;gap:var(--space-4);font-size:.75rem;color:var(--muted)}
 .header-meta time{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--text-dim)}
 .header-links{display:flex;align-items:center;gap:var(--space-3);font-size:.75rem;white-space:nowrap}
-.header-right{display:flex;align-items:center;gap:var(--space-3);margin-left:auto}
+.header-right{display:flex;align-items:center;justify-self:end;gap:var(--space-3)}
 .header-links a{color:var(--text-dim);text-decoration:none}
 .header-links a:hover{color:var(--accent)}
 .header-link-label{color:var(--muted)}
@@ -264,11 +269,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 @media(max-width:1024px){
   body{grid-template-columns:1fr;grid-template-areas:"header" "main"}
   .sidebar{position:fixed;top:0;left:0;bottom:0;width:280px;max-width:85vw;transform:translateX(-100%);
-    box-shadow:0 0 0 100vmax rgba(0,0,0,.5)}
+    box-shadow:0 0 0 100vmax var(--overlay)}
   .sidebar.open{transform:translateX(0)}
   .nav-backdrop.visible{display:block}
   .main{padding:var(--space-6) var(--space-4) var(--space-8)}
-  .header{padding:0 var(--space-4);gap:var(--space-3)}
+  /* The nav toggle reappears here. Keep the 1fr/auto/1fr tracks and let the toggle sit
+     inside the left track beside the title, so the timestamp stays at the true centre
+     instead of drifting right (flex space-between ignores the width asymmetry between
+     the left and right groups and the meta block ends up off-centre by ~49px at 768px). */
+  .header{padding:0 var(--space-4);display:grid;grid-template-columns:1fr auto 1fr;gap:var(--space-3)}
+  .header-start{display:flex;align-items:center;gap:var(--space-3);justify-self:start;min-width:0}
   .nav-toggle{display:flex}
   .header-meta span{display:none}
   .header-meta{font-size:.7rem}

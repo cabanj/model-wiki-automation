@@ -135,6 +135,11 @@ def test_theme_toggle_is_present_and_persists_choice():
     # The restoring script must run before the body paints to avoid a palette flash.
     assert html.index('llmroster-theme') < html.index('<body>')
     assert html.index('data-theme-toggle') < html.index('</header>')
+    # The nav toggle must sit inside .header-start, not as a fourth header child: the
+    # header is a 1fr/auto/1fr grid and a stray child would claim a track of its own.
+    assert 'class="header-start"' in html
+    start = html.index('class="header-start"')
+    assert start < html.index('class="nav-toggle"') < html.index('class="htitle"') < html.index('class="header-meta"')
 
 
 def test_palette_defines_light_default_and_both_dark_paths():
@@ -146,6 +151,23 @@ def test_palette_defines_light_default_and_both_dark_paths():
     assert 'color-scheme: light' in css and 'color-scheme: dark' in css
     # The near-black OLED-crushed background must be gone.
     assert '#0b0d10' not in css
+
+
+def test_header_centres_its_meta_block_with_a_three_track_grid():
+    css = render.BASE_CSS
+    # A 1fr/auto/1fr grid is what actually centres .header-meta. flex + space-between
+    # cannot, because the left and right groups differ in width.
+    assert 'grid-template-columns:1fr auto 1fr' in css
+    assert '.header-meta{' in css and 'justify-self:center' in css
+    # An auto margin on a header side group would absorb all free space and collapse the
+    # meta block against the title. (margin-left:auto is legitimate elsewhere - .main>*
+    # and .filter-count both rely on it - so scope the check to the header rules.)
+    assert '.header-right{display:flex;align-items:center;justify-self:end;gap:var(--space-3)}' in css
+    header_rules = '\n'.join(line for line in css.splitlines()
+                             if line.startswith('.header') or 'header-meta' in line or 'header-right' in line)
+    assert 'margin-left:auto' not in header_rules
+    # The mobile drawer dim must follow the theme too, not a hardcoded black.
+    assert 'rgba(0,0,0,.5)' not in css
 
 
 def test_rss_feed_is_valid_and_limited_to_twenty_newest_events():

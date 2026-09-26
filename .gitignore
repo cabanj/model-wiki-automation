@@ -4,4 +4,9 @@ dist/
 .env
 .pytest_cache/
 data/
-dist/
+.hermes/
+
+# Video/short-form build artifacts (regenerate with record_demo.py + generate_short.py)
+output_video/
+short_build/
+

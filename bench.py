@@ -257,7 +257,7 @@ def render(models, generated_at, use_cache=False):
     for index, (value, model) in enumerate(
             rank_free_for_field(models, aa_data, MULTIMODAL_FIELD, TOP_N, predicate=is_multimodal)):
         multimodal.append([
-            f'<code class="model-id">{esc(model.get("display_id", model["id"]))}</code>',
+            model_id(model.get("display_id", model["id"])),
             f'<span class="badge badge-free">Free</span> {score_cell(value, MULTIMODAL_FIELD, model, matched.get(model["id"]), best=index == 0)}',
         ])
     for value, entry in top_paid(aa_data, MULTIMODAL_FIELD):

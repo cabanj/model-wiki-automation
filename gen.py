@@ -126,6 +126,13 @@ def render_feed(history, generated_at):
     return ET.tostring(root, encoding="unicode")
 
 
+def id_stack(ids):
+    """One model ID per line (no separators) for narrow table cells."""
+    if not ids:
+        return "—"
+    return '<div class="id-stack">' + "".join(render.model_id(i) for i in ids) + "</div>"
+
+
 def _quickstart_model(models):
     candidates = [m for m in models if "openrouter" in m.get("sources", [])]
     if not candidates:
@@ -163,8 +170,8 @@ def render_index(models, d, history, statuses, generated_at):
     hist_sorted = sorted(history or [], key=lambda h: h.get("at", ""), reverse=True)
     hist_rows = [
         [fmt_ts(h["at"]),
-         ", ".join(render.model_id(i) for i in h["added"]) or "—",
-         ", ".join(render.model_id(i) for i in h["removed"]) or "—"]
+         id_stack(h["added"]),
+         id_stack(h["removed"])]
         for h in hist_sorted[:5]]
     cards = f'''
 <a class="card" href="comparisons-free-models-ranking.html"><span class="card-kicker">Directory</span><h3>Find a free model</h3><p>Filter the current roster by use case, model ID, source, modality, or capability.</p><div class="card-meta"><span>{n} models</span><span class="card-arrow">→</span></div></a>

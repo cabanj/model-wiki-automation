@@ -170,6 +170,24 @@ def test_header_centres_its_meta_block_with_a_three_track_grid():
     assert 'rgba(0,0,0,.5)' not in css
 
 
+def test_sidebar_rules_bleed_to_the_column_edges_and_content_stays_left_anchored():
+    css = render.BASE_CSS
+    # The two horizontal rules (brand divider, Support divider) must span the full sidebar
+    # column, so the sidebar's line and the footer's line read as one boundary. The sidebar
+    # padding is var(--space-4) per side, so the bleed has to cancel exactly that much.
+    for sel in ('.sidebar-brand', '.sidebar-support'):
+        idx = css.index(sel)
+        block = css[idx:css.index('}', idx)]
+        assert 'calc(-1 * var(--space-4))' in block, sel
+        assert 'padding-left:var(--space-4)' in block, sel
+        assert 'padding-right:var(--space-4)' in block, sel
+    # Content must stay left-anchored: margin:auto here made the gutter grow with the
+    # viewport (32px at 1440, 196px at 1920) and the rules drifted apart.
+    content_rule = [l for l in css.splitlines() if l.startswith('.main>*')][0]
+    assert 'margin-left:auto' not in content_rule and 'margin-right:auto' not in content_rule
+    assert 'max-width:1280px' in content_rule
+
+
 def test_rss_feed_is_valid_and_limited_to_twenty_newest_events():
     history = [{"at": f"2026-01-{day:02d}T00:00:00Z", "added": [f"vendor/model-{day}<x>"],
                 "removed": [f"old/model-{day}"]} for day in range(1, 23)]

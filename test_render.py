@@ -86,7 +86,7 @@ def test_external_link_and_configuration_placeholders():
     assert 'rel="noopener noreferrer sponsored"' in html
     assert 'target="_blank"' in html
     assert set(render.PROVIDER_CONFIG) == {'openrouter', 'nous', 'opencode-zen'}
-    assert render.SITE_CONFIG['support_url'] == ''
+    assert render.SITE_CONFIG['support_url'] == 'https://ko-fi.com/jacekcaban'
     assert render.SITE_CONFIG['site_url'] == 'https://llmroster.dev'
 
 
@@ -110,12 +110,12 @@ def test_footer_and_feed_head_links_are_present():
     assert 'application/rss+xml' in html
     assert 'href="feed.xml"' in html
     assert 'Model changes feed' in html
-    assert '>Support</a>' in html
+    assert '>Support</span></a>' in html
     assert 'LLM Roster' in html
     assert 'Hermes Model Wiki' not in html
     assert 'Hermes Wiki' not in html
     assert 'href="https://ko-fi.com/jacekcaban"' in html
-    assert 'GPU compute: <a href="https://runpod.io?ref=zkpkr4fe"' in html
+    assert '>RunPod</a> &mdash; affiliate link' in html
     assert 'rel="noopener noreferrer sponsored">RunPod</a>' in html
     assert '<header class="header" role="banner">' in html
     assert 'header-links' in html
@@ -123,6 +123,29 @@ def test_footer_and_feed_head_links_are_present():
     assert 'footer-links' in html
     assert 'GPU compute: <a' not in html.split('<footer class="footer">', 1)[1].split('</footer>', 1)[0]
     assert 'Generated 2026-01-01 01:00' in html
+
+
+def test_theme_toggle_is_present_and_persists_choice():
+    html = render.page('Home', 'index.html', '<p>Home</p>', '2026-01-01T00:00:00Z')
+    assert '<meta name="color-scheme" content="light dark">' in html
+    assert 'id="theme-color-meta"' in html
+    assert 'data-theme-toggle' in html
+    assert 'localStorage.getItem(\'llmroster-theme\')' in html
+    assert 'localStorage.setItem(\'llmroster-theme\',next)' in html
+    # The restoring script must run before the body paints to avoid a palette flash.
+    assert html.index('llmroster-theme') < html.index('<body>')
+    assert html.index('data-theme-toggle') < html.index('</header>')
+
+
+def test_palette_defines_light_default_and_both_dark_paths():
+    css = render.BASE_CSS
+    assert ':root[data-theme="dark"]' in css
+    assert '@media (prefers-color-scheme: dark)' in css
+    assert ':root:not([data-theme="light"])' in css
+    assert 'prefers-color-scheme: light)' not in css
+    assert 'color-scheme: light' in css and 'color-scheme: dark' in css
+    # The near-black OLED-crushed background must be gone.
+    assert '#0b0d10' not in css
 
 
 def test_rss_feed_is_valid_and_limited_to_twenty_newest_events():

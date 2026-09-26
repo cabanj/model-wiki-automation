@@ -166,10 +166,12 @@ def page(title, active, body, generated_at, extra_head=""):
 </aside>
 <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
 <header class="header" role="banner">
-  <button class="nav-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
+  <div class="header-start">
+    <button class="nav-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-  </button>
-  <a class="htitle" href="index.html">LLM Roster</a>
+    </button>
+    <a class="htitle" href="index.html">LLM Roster</a>
+  </div>
   <div class="header-meta"><span>Model intelligence</span><time datetime="{esc(generated_at)}">{fmt_ts(generated_at)}</time></div>
   <div class="header-right">
     <div class="header-links"><span class="header-link-label"><a href="https://runpod.io?ref=zkpkr4fe" target="_blank" rel="noopener noreferrer sponsored">RunPod</a> &mdash; affiliate link</span></div>

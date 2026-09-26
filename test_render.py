@@ -175,17 +175,39 @@ def test_sidebar_rules_bleed_to_the_column_edges_and_content_stays_left_anchored
     # The two horizontal rules (brand divider, Support divider) must span the full sidebar
     # column, so the sidebar's line and the footer's line read as one boundary. The sidebar
     # padding is var(--space-4) per side, so the bleed has to cancel exactly that much.
-    for sel in ('.sidebar-brand', '.sidebar-support'):
+    for sel, pad in (('.sidebar-brand', 'padding-left:var(--space-4);padding-right:var(--space-4)'),
+                     ('.sidebar-support', 'padding:var(--space-5) var(--space-4) var(--space-4)')):
         idx = css.index(sel)
         block = css[idx:css.index('}', idx)]
         assert 'calc(-1 * var(--space-4))' in block, sel
-        assert 'padding-left:var(--space-4)' in block, sel
-        assert 'padding-right:var(--space-4)' in block, sel
+        # The rule bleeds to the column edge, so the content inside must be re-inset by
+        # exactly the padding the bleed cancelled - otherwise the text sits flush.
+        assert pad in block, sel
     # Content must stay left-anchored: margin:auto here made the gutter grow with the
     # viewport (32px at 1440, 196px at 1920) and the rules drifted apart.
     content_rule = [l for l in css.splitlines() if l.startswith('.main>*')][0]
     assert 'margin-left:auto' not in content_rule and 'margin-right:auto' not in content_rule
     assert 'max-width:1280px' in content_rule
+
+
+def test_sidebar_brand_row_matches_the_header_height():
+    css = render.BASE_CSS
+    # Two "LLM Roster" wordmarks sit either side of the column boundary and the eye
+    # compares them directly, so both rows must be exactly --header-h tall. With the
+    # sidebar's own top padding the sidebar wordmark sat 6.5px below the header's.
+    idx = css.index('.sidebar-brand{')
+    block = css[idx:css.index('}', idx)]
+    assert 'height:var(--header-h)' in block
+    assert 'flex:0 0 var(--header-h)' in block
+    assert 'align-items:center' in block
+    # The sidebar's own vertical padding must be gone, or the brand row is pushed down.
+    sb_idx = css.index('.sidebar{')
+    sb_block = css[sb_idx:css.index('}', sb_idx)]
+    assert 'padding:0 var(--space-4)' in sb_block
+    # With the sidebar padding removed, the Support block has to carry its own bottom inset.
+    sup_idx = css.index('.sidebar-support{')
+    sup_block = css[sup_idx:css.index('}', sup_idx)]
+    assert 'padding:var(--space-5) var(--space-4) var(--space-4)' in sup_block
 
 
 def test_rss_feed_is_valid_and_limited_to_twenty_newest_events():

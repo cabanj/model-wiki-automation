@@ -6,14 +6,20 @@
 # subscription registration. They share only the SQLite file.
 set -euo pipefail
 
+# Where the unit files are read from. Override with WH_SOURCE to install from a
+# worktree or another checkout; it must contain deploy/*.service.
 REPO=/opt/model-wiki-automation
+SOURCE=${WH_SOURCE:-$REPO}
 STATE=/etc/roster-webhooks.env
 DATA=/var/lib/roster-webhooks
 
-echo "== fetching repo =="
-git -C "$REPO" fetch --quiet origin
-git -C "$REPO" checkout main --quiet
-git -C "$REPO" pull --ff-only --quiet
+for unit in roster-webhooks-api.service roster-webhooks-dispatch.service; do
+  [ -f "$SOURCE/deploy/$unit" ] || {
+    echo "ERROR: $SOURCE/deploy/$unit not found." >&2
+    echo "Pass WH_SOURCE=<checkout> if the units live elsewhere." >&2
+    exit 1
+  }
+done
 
 echo "== state directory =="
 mkdir -p "$DATA"
@@ -33,8 +39,8 @@ else
   echo "$STATE exists, keeping it"
 fi
 
-install -m 0644 "$REPO/deploy/roster-webhooks-api.service" /etc/systemd/system/roster-webhooks-api.service
-install -m 0644 "$REPO/deploy/roster-webhooks-dispatch.service" /etc/systemd/system/roster-webhooks-dispatch.service
+install -m 0644 "$SOURCE/deploy/roster-webhooks-api.service" /etc/systemd/system/roster-webhooks-api.service
+install -m 0644 "$SOURCE/deploy/roster-webhooks-dispatch.service" /etc/systemd/system/roster-webhooks-dispatch.service
 
 systemctl daemon-reload
 systemctl enable --now roster-webhooks-api.service

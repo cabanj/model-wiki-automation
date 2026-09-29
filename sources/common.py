@@ -12,8 +12,18 @@ import re
 #   "modalities": str,      # e.g. "text", "text+image->text"
 #   "tools": bool,
 #   "sources": [str],       # which sources confirm it free
+#   "source_ids": {str: str},  # per-source raw id (call it on that provider)
 #   "free_basis": str,      # "price-0" | "zen-free" | "zen-micro" | "plan"
 # }
+
+# OpenAI-compatible base URL per source, for the public API `endpoints` block.
+# models.dev enriches Zen metadata but is not a callable endpoint, so it is
+# absent here by design.
+PROVIDER_BASE_URLS = {
+    "openrouter": "https://openrouter.ai/api/v1",
+    "nous": "https://inference-api.nousresearch.com/v1",
+    "opencode-zen": "https://opencode.ai/zen/v1",
+}
 
 # IDs that are routers/aggregators/UI helpers or otherwise not real callable
 # free models — excluded from the roster.
@@ -52,6 +62,7 @@ def make_model(raw_id, name="", description="", context_length=None,
         "modalities": modalities,
         "tools": bool(tools),
         "sources": [source] if source else [],
+        "source_ids": {source: raw_id} if source else {},
         "free_basis": free_basis,
     }
 
@@ -79,6 +90,8 @@ def merge(models):
         for s in m["sources"]:
             if s not in cur["sources"]:
                 cur["sources"].append(s)
+        for s, raw in (m.get("source_ids") or {}).items():
+            cur.setdefault("source_ids", {}).setdefault(s, raw)
         # prefer richer metadata
         if len(m.get("description", "")) > len(cur.get("description", "")):
             cur["description"] = m["description"]

@@ -13,7 +13,10 @@ def _now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def load_snapshot(path=MODELS_FILE):
+def load_snapshot(path=None):
+    # Read at call time: a default argument freezes the path at import, so
+    # redirecting the data directory (tests, dry runs) would not take effect.
+    path = path or MODELS_FILE
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8") as f:
@@ -29,7 +32,8 @@ def diff(old_models, new_models):
             "unchanged_count": len(old_ids & new_ids)}
 
 
-def save_snapshot(models, statuses, path=MODELS_FILE):
+def save_snapshot(models, statuses, path=None):
+    path = path or MODELS_FILE
     os.makedirs(os.path.dirname(path), exist_ok=True)
     snap = {"generated_at": _now(), "statuses": statuses, "models": models}
     tmp = path + ".tmp"
@@ -39,7 +43,8 @@ def save_snapshot(models, statuses, path=MODELS_FILE):
     return snap
 
 
-def append_history(d, path=HISTORY_FILE):
+def append_history(d, path=None):
+    path = path or HISTORY_FILE
     os.makedirs(os.path.dirname(path), exist_ok=True)
     history = []
     if os.path.exists(path):
@@ -55,7 +60,8 @@ def append_history(d, path=HISTORY_FILE):
     return history
 
 
-def load_history(limit=10, path=HISTORY_FILE):
+def load_history(limit=10, path=None):
+    path = path or HISTORY_FILE
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as f:

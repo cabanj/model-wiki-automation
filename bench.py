@@ -182,7 +182,61 @@ def score_cell(value, field, model=None, entry=None, best=False):
     return f'<span class="score-cell">{fmt_score(value, field)}{mark}{star}</span>{label}'
 
 
+# Per-model benchmark record persisted to data/benchmarks.json for the public
+# API. Keys are roster ids; values are the AA fields the site actually renders
+# plus the matched AA record's name and whether it is a paid proxy.
+BENCH_FIELDS = ("artificial_analysis_intelligence_index",
+                "artificial_analysis_coding_index",
+                "terminalbench_hard", "gpqa",
+                "median_output_tokens_per_second",
+                "median_time_to_first_token_seconds")
+INDEX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "benchmarks.json")
+
+
+def build_index(models, aa_models):
+    """roster id -> benchmark record, using the same matching as the page."""
+    matched = match_free(models, aa_models)
+    out = {}
+    for model in models:
+        model_id = model["id"]
+        entry = matched.get(model_id)
+        record = {
+            "aa_matched": entry is not None,
+            "aa_name": (entry or {}).get("name", ""),
+            "paid_proxy": is_paid_proxy(entry),
+            "excluded": model_id in BENCH_EXCLUDE,
+        }
+        for field in BENCH_FIELDS:
+            value = (entry or {}).get(field)
+            record[field] = float(value) if value is not None else None
+        out[model_id] = record
+    return out
+
+
+def save_index(models, aa_models, generated_at, path=INDEX):
+    index = build_index(models, aa_models)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"generated_at": generated_at, "benchmarks": index}, f,
+                  ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
+    return index
+
+
+def load_index(path=INDEX):
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f).get("benchmarks", {})
+    except ValueError:
+        return {}
+
+
 def render(models, generated_at, use_cache=False):
+    """Render the page and persist data/benchmarks.json from the same AA data,
+    so the public API can never disagree with the rendered scores."""
     if use_cache:
         # Explicit cache reuse (deploy-only.sh): the merge changed code, not data.
         aa_data, error = load_cached(), ""
@@ -193,6 +247,8 @@ def render(models, generated_at, use_cache=False):
     if aa_data is None:
         aa_data = load_cached()
         from_cache = bool(aa_data)
+    if aa_data:
+        save_index(models, aa_data, generated_at)
     matched = match_free(models, aa_data)
 
     if use_cache and from_cache:

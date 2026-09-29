@@ -12,6 +12,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sources import collect_all
 from sources.common import is_junk
+from sources.watch import WatchRecorder
+import events as events_mod
+import paid_watch
 import snapshot as S
 import render
 import legal
@@ -202,6 +205,9 @@ def render_index(models, d, history, statuses, generated_at):
 
 def main():
     from_snapshot = "--from-snapshot" in sys.argv[1:]
+    generated_at = S._now()
+    paid_events = []
+    change_events = []
     if from_snapshot:
         # Rebuild pages from the last persisted roster: no source fetch, no snapshot
         # write, no history append. Used by deploy-only.sh so a merge to main
@@ -214,12 +220,29 @@ def main():
                   and not is_junk(m)]
         d = {"added": [], "removed": [], "unchanged_count": len(models)}
     else:
-        merged, statuses = collect_all()
+        # The recorder watches only models already known to have been free, so
+        # a full catalog is not kept in memory; it captures the price of a
+        # model that has just turned paid, which the free filter drops.
+        watch_state = paid_watch.load_watch()
+        recorder = WatchRecorder(paid_watch.watched_ids(watch_state))
+        merged, statuses = collect_all(recorder=recorder)
         models = [m for m in merged if m["free_basis"] in ("price-0", "zen-free", "zen-micro")
                   and not is_junk(m)]
         old = S.load_snapshot()
         d = S.diff(old["models"] if old else [], models)
-    generated_at = S._now()
+        watch_state, paid_events = paid_watch.update(
+            watch_state, models, recorder, statuses, generated_at)
+        paid_watch.save_watch(watch_state)
+        # One log for every event type, so the dispatcher reads a single file.
+        # Order matters: paid events are written first and a `model.removed`
+        # for the same id is skipped, because a model that just started
+        # charging is reported as became_paid, not as an unexplained removal.
+        change_events = events_mod.roster_events(
+            old["models"] if old else [], models, statuses, generated_at)
+        paid_ids = {e["model_id"] for e in paid_events}
+        change_events = [e for e in change_events
+                         if not (e["event"] == "model.removed" and e["model_id"] in paid_ids)]
+        events_mod.append(paid_events + change_events)
     if not from_snapshot:
         S.save_snapshot(models, statuses)
         S.append_history(d)
@@ -246,6 +269,15 @@ def main():
         import x_publisher
         print("ready-to-paste post:")
         print(x_publisher.format_message(d["added"], d["removed"]))
+
+    for event in paid_events:
+        print(f"paid event: {event['model_id']} now "
+              f"{event['source']} {event['pricing']} (was free until "
+              f"{event['last_seen_free']})")
+    if change_events:
+        for event in change_events:
+            print(f"change event: {event['event']} {event['model_id']}"
+                  + (f" cause={event['cause']}" if event.get("cause") else ""))
 
 
 if __name__ == "__main__":

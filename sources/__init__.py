@@ -6,9 +6,13 @@ import re
 import urllib.request
 
 from .common import make_model, is_zero_price, normalize_id
+from .watch import WatchRecorder
 
 UA = {"User-Agent": "model-wiki-automation/1.0"}
 TIMEOUT = 30
+
+__all__ = ["collect_all", "WatchRecorder", "fetch_openrouter", "fetch_nous_portal",
+           "fetch_opencode_zen", "fetch_modelsdev", "is_zero_price", "normalize_id"]
 
 
 def _get_json(url, headers=None):
@@ -23,13 +27,18 @@ def _result(models, err=""):
 
 # --- OpenRouter -------------------------------------------------------------
 
-def fetch_openrouter():
+def fetch_openrouter(recorder=None):
     try:
         data = _get_json("https://openrouter.ai/api/v1/models")["data"]
     except Exception as e:
         return [], f"openrouter: {e}"
     models = []
     for m in data:
+        # Record before the free filter: a model that just turned paid is
+        # exactly the one that gets filtered out, and that is the transition
+        # the watcher exists to catch.
+        if recorder is not None:
+            recorder.record(m["id"], m.get("pricing"), "openrouter")
         if not is_zero_price(m.get("pricing")):
             continue
         arch = m.get("architecture") or {}
@@ -44,13 +53,15 @@ def fetch_openrouter():
 
 # --- Nous Portal (inference API, OpenRouter-compatible) ----------------------
 
-def fetch_nous_portal():
+def fetch_nous_portal(recorder=None):
     try:
         data = _get_json("https://inference-api.nousresearch.com/v1/models")["data"]
     except Exception as e:
         return [], f"nous: {e}"
     models = []
     for m in data:
+        if recorder is not None:
+            recorder.record(m["id"], m.get("pricing"), "nous")
         if not is_zero_price(m.get("pricing")):
             continue
         arch = m.get("architecture") or {}
@@ -120,7 +131,7 @@ def _zen_basis(mid, price):
     return None
 
 
-def fetch_opencode_zen():
+def fetch_opencode_zen(recorder=None):
     try:
         data = _get_json("https://opencode.ai/zen/v1/models")["data"]
     except Exception as e:
@@ -130,16 +141,23 @@ def fetch_opencode_zen():
     # (description-only lookup, models.dev is NOT a roster source) AND
     # verify zero pricing via OpenRouter API (Zen models are also listed there).
     desc_by_id = _zen_descriptions_from_modelsdev()
-    or_pricing = _openrouter_pricing()
+    or_pricing = _openrouter_pricing(recorder=recorder)
     models = []
     for mid in ZEN_FREE_IDS:
-        if mid not in listed and normalize_id(mid) not in {normalize_id(x) for x in listed}:
+        normalized_mid = normalize_id(mid)
+        if recorder is not None and (mid in listed or normalized_mid in
+                                     {normalize_id(x) for x in listed}):
+            # Zen publishes no prices; presence in its own catalog is the
+            # strongest signal available, and it is recorded before the
+            # OpenRouter price check below can reject the id.
+            recorder.record(mid, None, "opencode-zen")
+        if mid not in listed and normalized_mid not in {normalize_id(x) for x in listed}:
             continue
         # strict price==0 check (1.2-contributor rejected here: micro-priced);
         # try both bare id and with known prefixes (OpenRouter may prefix with provider)
-        price = or_pricing.get(normalize_id(mid))
+        price = or_pricing.get(normalized_mid)
         if price is None:
-            price = or_pricing.get("meta/" + normalize_id(mid))
+            price = or_pricing.get("meta/" + normalized_mid)
         basis = _zen_basis(mid, price)
         if basis is None:
             continue
@@ -153,12 +171,17 @@ def fetch_opencode_zen():
     return models, err
 
 
-def _openrouter_pricing():
+def _openrouter_pricing(recorder=None):
     """Map normalized model id -> pricing dict, from OpenRouter catalog."""
     try:
         data = _get_json("https://openrouter.ai/api/v1/models")["data"]
     except Exception:
         return {}
+    if recorder is not None:
+        # Recorded here too, not only in fetch_openrouter: this is the call
+        # that sees Zen models under their provider-prefixed ids.
+        for m in data:
+            recorder.record(m["id"], m.get("pricing"), "openrouter")
     return {normalize_id(m["id"]): m.get("pricing") for m in data}
 
 
@@ -188,13 +211,21 @@ ALL_SOURCES = [
 ]
 
 
-def collect_all():
+def collect_all(recorder=None):
     """Fetch all sources; returns (merged_models, statuses).
-    A failing source never blocks the rest."""
+    A failing source never blocks the rest.
+
+    `recorder` is an optional WatchRecorder: when given, every catalog entry a
+    source sees is recorded — including the paid ones that the free filter
+    rejects — so `model.became_paid` is detectable. The recorder is populated
+    even for a source that then fails partway, and a source that returns
+    nothing is not recorded as "all gone": the watcher treats absence from a
+    healthy source as evidence and absence from a failed one as silence.
+    """
     from .common import merge
     merged, statuses = [], {}
     for name, fn in ALL_SOURCES:
-        models, err = fn()
+        models, err = fn(recorder=recorder)
         statuses[name] = {"ok": not err.startswith(name.split(":")[0]) and err == "",
                           "count": len(models), "error": err}
         merged.extend(models)

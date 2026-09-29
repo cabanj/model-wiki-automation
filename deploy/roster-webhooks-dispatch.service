@@ -1,0 +1,28 @@
+[Unit]
+Description=llmroster.dev webhook dispatcher (delivery loop)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/model-wiki-automation
+EnvironmentFile=/etc/roster-webhooks.env
+Environment=ROSTER_WEBHOOK_DB=/var/lib/roster-webhooks/webhooks.db
+Environment=ROSTER_WEBHOOK_EVENTS=/opt/model-wiki-automation/data/events.json
+Environment=ROSTER_WEBHOOK_ALLOW_PRIVATE=0
+# 30s: the roster refreshes once a day, so a minute-scale loop only affects how
+# fast a subscriber hears about a change, not how many events exist.
+ExecStart=/usr/bin/python3 /opt/model-wiki-automation/webhook_service.py dispatch 30
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/roster-webhooks
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

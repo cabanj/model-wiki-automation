@@ -1,0 +1,32 @@
+[Unit]
+Description=llmroster.dev webhook API (subscriptions)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/model-wiki-automation
+EnvironmentFile=/etc/roster-webhooks.env
+Environment=ROSTER_WEBHOOK_DB=/var/lib/roster-webhooks/webhooks.db
+Environment=ROSTER_WEBHOOK_EVENTS=/opt/model-wiki-automation/data/events.json
+Environment=ROSTER_WEBHOOK_BIND=127.0.0.1
+Environment=ROSTER_WEBHOOK_PORT=8090
+# Production policy: https only, no private or loopback targets. Flipping this
+# in production would turn the service into an open relay into whatever the VPS
+# can reach internally, including the authenticated router on 127.0.0.1:4000.
+Environment=ROSTER_WEBHOOK_ALLOW_PRIVATE=0
+ExecStart=/usr/bin/python3 /opt/model-wiki-automation/webhook_service.py serve
+Restart=always
+RestartSec=3
+# Hardening: the service reads a database and posts to the network, nothing else.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/roster-webhooks
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

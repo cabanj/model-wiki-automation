@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sources import collect_all
 from sources.common import is_junk
 from sources.watch import WatchRecorder
+import api_docs
 import events as events_mod
 import paid_watch
 import snapshot as S
@@ -255,6 +256,8 @@ def main():
         os.remove(stale_router_page)
     with open(os.path.join(OUT_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(render_index(models, d, S.load_history(), statuses, generated_at))
+    with open(os.path.join(OUT_DIR, "api.html"), "w", encoding="utf-8") as f:
+        f.write(api_docs.render_api(generated_at))
     with open(os.path.join(OUT_DIR, "privacy.html"), "w", encoding="utf-8") as f:
         f.write(legal.render_privacy(generated_at))
     with open(os.path.join(OUT_DIR, "contact.html"), "w", encoding="utf-8") as f:

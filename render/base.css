@@ -273,6 +273,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .quickstart-panel pre{overflow:auto;margin:0;padding:var(--space-4);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--mono);font-size:.78rem;line-height:1.6}
 .quickstart-panel .copy-button{margin-top:var(--space-3)}
 
+/* Code blocks on the API page. Scoped to .code-block rather than a bare `pre`
+   rule: the quickstart panels already have their own, and a global rule would
+   restyle those and change pages that already ship. Long curl lines must scroll
+   rather than widen the layout, which is why the block is its own scroll
+   container and the inline code inside it loses the chip styling it gets in
+   prose (a chip inside a code block is noise). */
+.code-block{overflow:auto;margin:var(--space-4) 0;padding:var(--space-4);background:var(--bg);
+  border:1px solid var(--border);border-radius:var(--radius);font-family:var(--mono);
+  font-size:.78rem;line-height:1.6}
+.code-block code:not(pre code){background:none;border:0;padding:0;color:var(--text);font-size:inherit}
+
 .footer{margin-top:var(--space-10);padding-top:var(--space-6);border-top:1px solid var(--border);text-align:center;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .footer-links{display:flex;justify-content:center;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-2)}
 .footer-note{color:var(--text-dim)}

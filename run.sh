@@ -19,7 +19,7 @@ STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 sudo cp -r /var/www/model-wiki "/var/www/model-wiki.bak-$STAMP"
 sudo find /var/www/model-wiki -name '*.bak-*' -maxdepth 1 -mtime +14 -exec rm -rf {} + 2>/dev/null || true
 sudo mkdir -p /var/www/model-wiki/api/v1
-sudo cp dist/index.html dist/comparisons-free-models-ranking.html dist/comparisons-benchmarks.html dist/feed.xml dist/privacy.html dist/contact.html /var/www/model-wiki/
+sudo cp dist/index.html dist/comparisons-free-models-ranking.html dist/comparisons-benchmarks.html dist/feed.xml dist/privacy.html dist/contact.html dist/api.html /var/www/model-wiki/
 sudo cp dist/api/v1/roster.json /var/www/model-wiki/api/v1/roster.json
 sudo rm -f /var/www/model-wiki/comparisons-router-changelog.html
 
@@ -28,8 +28,9 @@ sleep 1
 CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/index.html)
 FEED_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/feed.xml)
 API_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/v1/roster.json)
-echo "smoke test http://127.0.0.1:8080/index.html -> $CODE; feed.xml -> $FEED_CODE; api/v1/roster.json -> $API_CODE"
-[ "$CODE" = "200" ] && [ "$FEED_CODE" = "200" ] && [ "$API_CODE" = "200" ] || { echo "DEPLOY FAILED"; exit 1; }
+DOC_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api.html)
+echo "smoke test index.html -> $CODE; feed.xml -> $FEED_CODE; api/v1/roster.json -> $API_CODE; api.html -> $DOC_CODE"
+[ "$CODE" = "200" ] && [ "$FEED_CODE" = "200" ] && [ "$API_CODE" = "200" ] && [ "$DOC_CODE" = "200" ] || { echo "DEPLOY FAILED"; exit 1; }
 echo "deployed OK at $STAMP"
 
 # publish the public free-llm-roster README (no-op until its checkout exists);

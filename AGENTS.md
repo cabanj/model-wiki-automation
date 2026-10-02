@@ -2,7 +2,7 @@
 
 ## Purpose and flow
 
-This is a standard-library Python static-site generator for a free-model wiki, not a service. The production flow is `cron-model-wiki.sh` -> `run.sh` -> `python3 gen.py` -> `python3 bench.py`, followed by deployment to `/var/www/model-wiki`.
+This is a standard-library Python static-site generator for a free-model wiki, not a service. The production flow is `cron-model-wiki.sh` -> `run.sh` -> `python3 gen.py` -> `python3 bench.py` -> `python3 api.py`, followed by deployment to `/var/www/model-wiki`.
 - `run.sh` finishes by calling `publish-readme.sh`, which regenerates the public `free-llm-roster` README and publishes it. It is best-effort by design: every failure path exits 0 so a README problem can never fail the site deploy.
 
 - `sources/` fetches and merges OpenRouter, Nous Portal, and OpenCode Zen models.
@@ -15,6 +15,7 @@ This is a standard-library Python static-site generator for a free-model wiki, n
 - `api.py` writes the public API payload `dist/api/v1/roster.json` from `data/models.json` plus `data/benchmarks.json`. Anonymous, no query parameters, no authentication; nginx applies the rate limit.
 - `webhooks/` + `webhook_service.py` is the subscription and delivery service, deployed as two systemd units (`roster-webhooks-api`, `roster-webhooks-dispatch`) sharing one SQLite file. `urls.py` is the SSRF boundary, `signing.py` the HMAC and ownership challenge, `store.py` the queue, `dispatcher.py` the retry loop. Config in `webhooks/config.py`, unit files and installer in `deploy/`.
 - `render.py` and `render/base.css` own the shared HTML shell and styling.
+- `deploy/` holds the nginx and systemd configuration, versioned here because none of it is discoverable from the code: `roster-api-limit.conf` (rate-limit zones), `roster-api-location.conf` and `roster-webhooks-location.conf` (the `/api/` blocks), `cloudflare-realip.conf`, `cloudflare-origin-lock-geo.conf` (the Cloudflare-only allowlist), `update-cloudflare-ranges.sh`, and the two `roster-webhooks-*.service` units.
 - `analysis/` is historical reference material, not current generated output.
 
 ## Commands
@@ -25,7 +26,7 @@ Run from the repository root. The runtime is Python standard library; the test r
 python3 gen.py
 python3 bench.py
 python3 api.py
-python -m pytest test_sources.py test_snapshot.py test_bench.py test_api.py test_paid_watch.py test_events.py test_gen_events.py test_webhooks.py test_webhook_api.py test_webhook_delivery.py -v
+python -m pytest test_sources.py test_snapshot.py test_bench.py test_api.py test_api_docs.py test_paid_watch.py test_events.py test_gen_events.py test_webhooks.py test_webhook_api.py test_webhook_delivery.py test_render.py -v
 ```
 
 The pipeline order matters: `bench.py` must write `data/benchmarks.json` before `api.py` runs, otherwise the payload ships with `benchmarks.matched: false` for every model.
@@ -44,7 +45,7 @@ bash run.sh
 bash cron-model-wiki.sh
 ```
 
-`run.sh` requires Linux, `AA_API_KEY`, `sudo`, `/var/www/model-wiki`, and an HTTP server on `127.0.0.1:8080`. It deploys only the three active HTML files and `feed.xml`, and removes the obsolete router changelog page. It also invokes `publish-readme.sh`, which needs the checkout at `/opt/free-llm-roster` and pushes over the `github-roster` SSH host alias; both are absent until the deploy key is installed, and the script no-ops cleanly in that state. `cron-model-wiki.sh` performs `git pull --ff-only`, sources `/etc/model-wiki.env`, and expects an external cron schedule; it does not install a schedule or redirect logs despite its comment.
+`run.sh` requires Linux, `AA_API_KEY`, `sudo`, `/var/www/model-wiki`, and an HTTP server on `127.0.0.1:8080`. It deploys the active HTML files (`index.html`, the ranking, the benchmarks, `privacy.html`, `contact.html`, `api.html`), `feed.xml`, and `api/v1/roster.json`, and removes the obsolete router changelog page. It also invokes `publish-readme.sh`, which needs the checkout at `/opt/free-llm-roster` and pushes over the `github-roster` SSH host alias; both are absent until the deploy key is installed, and the script no-ops cleanly in that state. `cron-model-wiki.sh` performs `git pull --ff-only`, sources `/etc/model-wiki.env`, and expects an external cron schedule; it does not install a schedule or redirect logs despite its comment.
 
 There is no dependency manifest, lockfile, CI configuration, or configured lint, formatter, typecheck, or source-codegen command.
 
@@ -55,11 +56,10 @@ There is no dependency manifest, lockfile, CI configuration, or configured lint,
 - For OpenRouter and Nous, require both prompt and completion pricing to be exactly zero; missing or micro-pricing is rejected.
 - Zen free status is curated separately; `muse-spark-1.3-contributor-free` is the explicit `zen-micro` exception. `models.dev` is metadata enrichment for Zen, not a roster source.
 - **A source outage must never read as "everything went paid".** `paid_watch` only judges a model from a source reported `ok`; a failed source is silence, not evidence. `opencode-zen` fails often enough that this path is exercised in practice, not hypothetically.
-- **`paid_watch` needs the previous roster, not just the new one.** A model that just stopped being free is absent from the freshly filtered `models` by definition, so `gen.py` passes the union of new and old ids; otherwise the id to check would never be looked up.
+- **`paid_watch` must receive the CURRENT roster only.** Passing the previous roster back in makes the watcher treat the model as still present and skip its price check, so `model.became_paid` fires a run late or never. The watch list already holds every model ever free, so there is nothing to re-supply. `test_gen_events.py` pins this.
 - Zen ids are bare in the roster (`hy3`) but provider-prefixed in the OpenRouter catalog (`meta/hy3`). `WatchRecorder` filters and keys on both forms; a bare-only lookup silently loses every Zen price change.
 - Returning a model to free must clear BOTH `notified_at` and `event_emitted` in `paid_watch`, or the next paid transition is swallowed forever.
 - `paid-watch.json` bootstraps empty: the first run only records what is free now, so no event can fire until a second run sees a change. This is expected, not a bug.
-- **`paid_watch` must receive the CURRENT roster only.** Passing the previous roster back in makes the watcher treat the model as still present and skip its price check, so `model.became_paid` fires a run late or never. The watch list already holds every model ever free. `test_gen_events.py` pins this.
 - **Never bind a data path as a default argument** (`def f(path=WATCH_FILE)`); it freezes at import and a redirected `data/` writes to the real files instead. Read it in the body: `path = path or WATCH_FILE`.
 - A `model.removed` for a model that just turned paid is suppressed; subscribers get `model.became_paid`, never both for one transition.
 - `events.py` dedupes on a content-addressed `id` that EXCLUDES the timestamp, so the same real-world change seen on a later run is recognised as the same event.
@@ -67,6 +67,12 @@ There is no dependency manifest, lockfile, CI configuration, or configured lint,
 - **`BaseHTTPRequestHandler.connection` is the socket.** Naming the SQLite handle `self.connection` shadows it and every route 500s. The handle is `self.db`, a per-thread connection from `store.thread_connection` — one shared connection across `ThreadingHTTPServer` threads raises `ProgrammingError`.
 - **`dispatcher.run_once` must re-read the clock after enqueueing.** Reusing the pre-enqueue timestamp makes a fresh event look not-yet-due, so it waits a whole interval.
 - Verification requires the endpoint to **echo the challenge token**, not just return 2xx: a blanket 200 is the signature of a relay target.
+- **`llmroster.dev` has no vhost of its own.** It resolves through Cloudflare to the origin's `:80 default_server` in `sites-available/default`. The `:8080 model-wiki` vhost is only the localhost smoke-test target, and `:443` is the LiteLLM router, reached directly via sslip.io and NOT behind Cloudflare. Testing `:8080` does not prove the public path works.
+- **The origin lock classifies `$realip_remote_addr`, not `$remote_addr`.** `real_ip_header CF-Connecting-IP` rewrites `$remote_addr` to the visitor, so allowlisting Cloudflare ranges against it refuses every real user; `allow` cannot take a variable either, and a `map` block matches exact values only, never CIDR. `geo` in `conf.d/` is the only combination that works. Three wrong variants each returned 403 on every page. Check `nginx -T | grep geo`, not just `nginx -t`: a `geo` file left in `snippets/` parses fine and is never loaded.
+- **The origin allowlist fails closed**, so a Cloudflare range added upstream means refused traffic until `deploy/update-cloudflare-ranges.sh` runs. Visible breakage beats silent exposure. A root cron entry runs it at 04:17 UTC daily (`/var/log/cloudflare-ranges.log`); the script refuses to write an empty list and reloads nginx only when bytes actually change, so a no-change day is silent.
+- **Backups must never sit in `sites-enabled/` or `conf.d/`.** nginx loads every file there as real configuration; a `.bak-*` there silently duplicates a server block or a directive.
+- `api_docs.py` must keep deriving its tables from `api.BENCH_FIELDS`, `events.EVENT_TYPES`, `webhooks.signing` and `PROVIDER_BASE_URLS`. Adding an event type without documenting it raises at render time; hand-copied field names rot silently.
+- `.code-block` in `render/base.css` is scoped rather than a bare `pre` rule: the quickstart panels have their own styling and a global rule would restyle pages that already ship.
 - `publish-readme.sh` must retry, not skip: it pushes when the remote may be behind rather than only when the current run committed, because a one-off network failure would otherwise strand the README forever. The `github-roster/main` tracking ref does not exist before the first successful push, so an unresolvable ref counts as unpushed.
 - `run.sh` and `publish-readme.sh` need the executable bit, which `git pull` does not carry; `cron-model-wiki.sh` restores it at startup, so a manual `./run.sh` can fail with exit 126 after a pull.
 - Keep `AA_API_KEY` outside the repository. Benchmark API calls use the `x-api-key` header.
